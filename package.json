@@ -12,7 +12,6 @@
     "@stripe/react-stripe-js": "^2.9.0",
     "@stripe/stripe-js": "^2.4.0",
     "@supabase/supabase-js": "^2.45.4",
-    "stripe": "^16.11.0",
     "framer-motion": "^10.18.0",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.344.0",
@@ -20,9 +19,11 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.6.0",
+    "stripe": "^16.11.0",
     "zustand": "^4.5.7"
   },
   "devDependencies": {
+    "@types/react-dom": "^19.1.9",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "14.0.4",
