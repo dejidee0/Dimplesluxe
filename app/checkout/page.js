@@ -23,7 +23,7 @@ import { initializePaystackPayment } from "../../lib/payments/paystack";
 import {
   initializeApplePay,
   isApplePayAvailable,
-} from "../lib/payments/applepay";
+} from "../../lib/payments/applepay";
 import toast from "react-hot-toast";
 
 export default function CheckoutPage() {
