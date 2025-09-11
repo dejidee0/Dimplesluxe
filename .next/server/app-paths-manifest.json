@@ -1,0 +1,8 @@
+{
+  "/page": "app/page.js",
+  "/products/page": "app/products/page.js",
+  "/product/[id]/page": "app/product/[id]/page.js",
+  "/checkout/page": "app/checkout/page.js",
+  "/api/payments/paystack/initialize/route": "app/api/payments/paystack/initialize/route.js",
+  "/cart/page": "app/cart/page.js"
+}
