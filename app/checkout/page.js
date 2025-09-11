@@ -15,11 +15,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCartStore, useAuthStore } from "../lib/store";
-import { formatPrice } from "../lib/currency";
-import { supabase } from "../lib/supabase";
-import { createStripeCheckoutSession } from "../lib/payments/stripe";
-import { initializePaystackPayment } from "../lib/payments/paystack";
+import { useCartStore, useAuthStore } from "../../lib/store";
+import { formatPrice } from "../../lib/currency";
+import { supabase } from "../../lib/supabase";
+import { createStripeCheckoutSession } from "../../lib/payments/stripe";
+import { initializePaystackPayment } from "../../lib/payments/paystack";
 import {
   initializeApplePay,
   isApplePayAvailable,
