@@ -14,9 +14,9 @@ import {
   MapPin,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { supabase } from "../../lib/supabase";
-import { formatPrice } from "../../lib/currency";
-import { redirectToWhatsApp } from "../../lib/whatsapp";
+import { supabase } from "../../../lib/supabase";
+import { formatPrice } from "../../../lib/currency";
+import { redirectToWhatsApp } from "../../../lib/whatsapp";
 import toast from "react-hot-toast";
 
 export default function OrderConfirmationPage() {

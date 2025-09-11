@@ -18,9 +18,9 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useAuthStore } from "../lib/store";
-import { supabase } from "../lib/supabase";
-import { formatPrice } from "../lib/currency";
+import { useAuthStore } from "../../lib/store";
+import { supabase } from "../../lib/supabase";
+import { formatPrice } from "../../lib/currency";
 import toast from "react-hot-toast";
 
 export default function AdminPage() {
