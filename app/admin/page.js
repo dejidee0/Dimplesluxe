@@ -40,14 +40,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     // Check if user is admin
-    if (!user) {
-      router.push("/auth/login");
-      return;
-    }
 
     // For demo purposes, we'll allow access. In production, check admin role
     fetchDashboardData();
-  }, [user, router]);
+  }, []);
 
   const fetchDashboardData = async () => {
     try {

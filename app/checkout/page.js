@@ -7,7 +7,7 @@ import Footer from "../components/Footer";
 import {
   ChevronLeft,
   ChevronRight,
-  CreditCard,
+  Wallet,
   Smartphone,
   Building2,
   Lock,
@@ -18,16 +18,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore, useAuthStore } from "../../lib/store";
 import { formatPrice } from "../../lib/currency";
 import { supabase } from "../../lib/supabase";
-import { createStripeCheckoutSession } from "../../lib/payments/stripe";
+import { initializePayPalPayment } from "../../lib/payments/paypal";
 import { initializePaystackPayment } from "../../lib/payments/paystack";
 import {
   initializeApplePay,
   isApplePayAvailable,
 } from "../../lib/payments/applepay";
+import { fetchLiveExchangeRate } from "../../lib/exchangeRates";
 import toast from "react-hot-toast";
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { query = {} } = router; // Default to empty object to prevent undefined
   const { user, loading: userLoading } = useAuthStore();
   const {
     items,
@@ -43,32 +45,76 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState([]);
   const [formData, setFormData] = useState({
-    // Customer Info
     email: "",
     firstName: "",
     lastName: "",
     phone: "",
-    // Billing Address
     billingAddress: "",
     billingAddress2: "",
     billingCity: "",
     billingPostcode: "",
     billingCountry: "GB",
-    // Shipping Address
     sameAsBilling: true,
     shippingAddress: "",
     shippingAddress2: "",
     shippingCity: "",
     shippingPostcode: "",
     shippingCountry: "GB",
-    // Shipping Method
     shippingMethod: "standard",
-    // Payment
-    paymentMethod: "stripe",
+    paymentMethod: "paypal",
   });
   const [errors, setErrors] = useState({});
 
-  // Populate formData with user data when available
+  // Handle cancelled payment and move to payment step
+  useEffect(() => {
+    if (query.cancelled === "true") {
+      toast.error(
+        "Payment was cancelled. Please try again or choose another payment method."
+      );
+      setCurrentStep(4); // Move to payment step for retry
+    }
+  }, [query]);
+
+  // Handle successful payment callback
+  useEffect(() => {
+    if (query.success === "true" && query.orderId && query.orderNumber) {
+      const confirmOrder = async () => {
+        try {
+          // Verify order exists and is pending
+          const { data: order, error: orderError } = await supabase
+            .from("orders")
+            .select("*")
+            .eq("id", query.orderId)
+            .eq("order_number", query.orderNumber)
+            .eq("status", "pending")
+            .single();
+
+          if (orderError || !order) {
+            throw new Error("Invalid or already processed order");
+          }
+
+          // Update order status to completed
+          const { error: updateError } = await supabase
+            .from("orders")
+            .update({ status: "completed" })
+            .eq("id", query.orderId);
+
+          if (updateError) {
+            throw new Error(`Failed to confirm order: ${updateError.message}`);
+          }
+
+          clearCart();
+          toast.success("Order placed successfully!");
+          router.push(`/order-confirmation/${query.orderNumber}`);
+        } catch (error) {
+          console.error("Order confirmation error:", error);
+          toast.error("Failed to confirm order. Please contact support.");
+        }
+      };
+      confirmOrder();
+    }
+  }, [query, clearCart, router]);
+
   useEffect(() => {
     if (user && !userLoading) {
       setFormData((prev) => ({
@@ -80,48 +126,51 @@ export default function CheckoutPage() {
     }
   }, [user, userLoading]);
 
-  // Redirect to cart if empty
   useEffect(() => {
     if (items.length === 0) {
       router.push("/cart");
     }
   }, [items, router]);
 
-  // Update available payment methods based on currency and country
   useEffect(() => {
     updateAvailablePaymentMethods();
   }, [currency, formData.billingCountry]);
 
-  // Auto-detect currency based on billing country
   useEffect(() => {
-    if (formData.billingCountry === "NG") {
-      setCurrency("NGN");
-      setExchangeRate(1850);
-      setFormData((prev) => ({ ...prev, paymentMethod: "paystack" }));
-    } else {
-      setCurrency("GBP");
-      setExchangeRate(1);
-      if (formData.paymentMethod === "paystack") {
-        setFormData((prev) => ({ ...prev, paymentMethod: "stripe" }));
+    const updateCurrency = async () => {
+      try {
+        if (formData.billingCountry === "NG") {
+          setCurrency("NGN");
+          const rate = await fetchLiveExchangeRate("GBP", "NGN");
+          setExchangeRate(rate);
+          setFormData((prev) => ({ ...prev, paymentMethod: "paystack" }));
+        } else {
+          setCurrency("GBP");
+          setExchangeRate(1);
+          if (formData.paymentMethod === "paystack") {
+            setFormData((prev) => ({ ...prev, paymentMethod: "paypal" }));
+          }
+        }
+      } catch (error) {
+        console.error("Error updating currency:", error);
+        toast.error("Failed to update currency rate");
+        setExchangeRate(formData.billingCountry === "NG" ? 1850 : 1);
       }
-    }
+    };
+    updateCurrency();
   }, [formData.billingCountry, setCurrency, setExchangeRate]);
 
   const updateAvailablePaymentMethods = () => {
     const methods = [];
-
-    // Stripe - Available for most countries except Nigeria for local payments
     if (currency !== "NGN" || formData.billingCountry !== "NG") {
       methods.push({
-        id: "stripe",
-        name: "Credit/Debit Card",
-        description: "Visa, Mastercard, American Express",
-        icon: CreditCard,
+        id: "paypal",
+        name: "PayPal",
+        description: "Pay with PayPal, credit/debit card, or bank account",
+        icon: Wallet,
         currencies: ["GBP", "USD", "EUR", "CAD", "AUD"],
       });
     }
-
-    // Paystack - Primarily for Nigerian customers
     if (currency === "NGN" || formData.billingCountry === "NG") {
       methods.push({
         id: "paystack",
@@ -131,8 +180,6 @@ export default function CheckoutPage() {
         currencies: ["NGN"],
       });
     }
-
-    // Apple Pay - Available on supported devices for most currencies
     if (isApplePayAvailable() && currency !== "NGN") {
       methods.push({
         id: "apple_pay",
@@ -142,10 +189,7 @@ export default function CheckoutPage() {
         currencies: ["GBP", "USD", "EUR", "CAD", "AUD"],
       });
     }
-
     setAvailablePaymentMethods(methods);
-
-    // Auto-select first available payment method if current one is not available
     const currentMethodAvailable = methods.some(
       (method) => method.id === formData.paymentMethod
     );
@@ -154,12 +198,20 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleCurrencyChange = (newCurrency) => {
-    setCurrency(newCurrency);
-    if (newCurrency === "NGN") {
-      setExchangeRate(1850); // Consider fetching from an API
-    } else {
-      setExchangeRate(1);
+  const handleCurrencyChange = async (newCurrency) => {
+    try {
+      setCurrency(newCurrency);
+      if (newCurrency === "NGN") {
+        const rate = await fetchLiveExchangeRate("GBP", "NGN");
+        setExchangeRate(rate);
+      } else {
+        setExchangeRate(1);
+      }
+      toast.success(`Currency switched to ${newCurrency}`);
+    } catch (error) {
+      console.error("Error switching currency:", error);
+      toast.error("Failed to switch currency");
+      setExchangeRate(newCurrency === "NGN" ? 1850 : 1);
     }
   };
 
@@ -167,6 +219,13 @@ export default function CheckoutPage() {
   const shippingCost =
     formData.shippingMethod === "express" ? 9.99 : subtotal > 50 ? 0 : 4.99;
   const total = subtotal + shippingCost;
+
+  // Validate total to prevent invalid amounts
+  if (total <= 0) {
+    console.error("Invalid total amount:", total);
+    toast.error("Order total must be greater than zero");
+    return null;
+  }
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -177,21 +236,18 @@ export default function CheckoutPage() {
 
   const validateStep = (step) => {
     const newErrors = {};
-
     if (step === 1) {
       if (!formData.email) newErrors.email = "Email is required";
       if (!formData.firstName) newErrors.firstName = "First name is required";
       if (!formData.lastName) newErrors.lastName = "Last name is required";
       if (!formData.phone) newErrors.phone = "Phone number is required";
     }
-
     if (step === 2) {
       if (!formData.billingAddress)
         newErrors.billingAddress = "Address is required";
       if (!formData.billingCity) newErrors.billingCity = "City is required";
       if (!formData.billingPostcode)
         newErrors.billingPostcode = "Postcode is required";
-
       if (!formData.sameAsBilling) {
         if (!formData.shippingAddress)
           newErrors.shippingAddress = "Shipping address is required";
@@ -201,7 +257,6 @@ export default function CheckoutPage() {
           newErrors.shippingPostcode = "Shipping postcode is required";
       }
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -218,8 +273,17 @@ export default function CheckoutPage() {
 
   const createOrder = async () => {
     try {
-      const orderNumber = `DLX${Date.now()}`;
+      // Ensure Supabase client uses user session if authenticated
+      if (user) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session) {
+          supabase.auth.setSession(session.access_token);
+        }
+      }
 
+      const orderNumber = `DLX${Date.now()}`;
       const orderData = {
         order_number: orderNumber,
         user_id: user?.id || null,
@@ -261,7 +325,10 @@ export default function CheckoutPage() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase order insert error:", error);
+        throw new Error(`Failed to create order: ${error.message}`);
+      }
 
       const orderItems = items.map((item) => ({
         order_id: order.id,
@@ -279,7 +346,10 @@ export default function CheckoutPage() {
         .from("order_items")
         .insert(orderItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error("Supabase order_items insert error:", itemsError);
+        throw new Error(`Failed to create order items: ${itemsError.message}`);
+      }
 
       return order;
     } catch (error) {
@@ -290,12 +360,9 @@ export default function CheckoutPage() {
 
   const handlePayment = async () => {
     if (!validateStep(4)) return;
-
     setLoading(true);
-
     try {
       const order = await createOrder();
-
       const paymentData = {
         orderId: order.id,
         orderNumber: order.order_number,
@@ -312,11 +379,13 @@ export default function CheckoutPage() {
         })),
         shipping: shippingCost,
         shippingMethod: formData.shippingMethod,
+        successUrl: `${window.location.origin}/checkout?success=true&orderId=${order.id}&orderNumber=${order.order_number}`,
+        cancelUrl: `${window.location.origin}/checkout?cancelled=true`,
       };
 
       switch (formData.paymentMethod) {
-        case "stripe":
-          await createStripeCheckoutSession(paymentData);
+        case "paypal":
+          await initializePayPalPayment(paymentData);
           break;
         case "paystack":
           await initializePaystackPayment(paymentData);
@@ -332,16 +401,22 @@ export default function CheckoutPage() {
         default:
           throw new Error("Invalid payment method");
       }
-
-      clearCart();
-      toast.success("Order placed successfully!");
-      router.push(`/order-confirmation/${order.order_number}`);
     } catch (error) {
       console.error("Payment error:", error);
       toast.error(error.message || "Payment failed. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetryPayment = () => {
+    setErrors({});
+    setCurrentStep(4); // Stay on payment step
+    toast.dismiss(); // Clear toasts
+  };
+
+  const handleReturnToCart = () => {
+    router.push("/cart");
   };
 
   const steps = [
@@ -363,6 +438,31 @@ export default function CheckoutPage() {
           <h1 className="font-playfair text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
             Checkout
           </h1>
+          {query.cancelled === "true" && (
+            <div className="mb-6 p-4 bg-red-50 rounded-lg flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <p className="text-sm text-red-700">
+                  Your payment was cancelled. Please try again or choose another
+                  payment method.
+                </p>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleRetryPayment}
+                  className="btn-primary text-sm px-4 py-2"
+                >
+                  Retry Payment
+                </button>
+                <button
+                  onClick={handleReturnToCart}
+                  className="btn-secondary text-sm px-4 py-2"
+                >
+                  Return to Cart
+                </button>
+              </div>
+            </div>
+          )}
           <div className="mb-6">
             <div className="bg-white rounded-xl shadow-md p-4 flex items-center justify-between">
               <div>

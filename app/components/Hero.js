@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 export default function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary-50 via-rose-50 to-pink-50">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary-50 via-rose-50 to-pink-50 md:px-10">
       {/* Background Elements */}
       <div className="absolute inset-0">
         <div className="absolute top-20 left-10 w-20 h-20 bg-primary-200 rounded-full opacity-20 animate-bounce-gentle"></div>
@@ -84,11 +84,11 @@ export default function Hero() {
                   ))}
                 </div>
                 <span className="text-sm sm:text-base text-gray-600">
-                  5.0 (2,500+ reviews)
+                  5.0 (500+ reviews)
                 </span>
               </div>
               <div className="text-sm sm:text-base text-gray-600">
-                <span className="font-semibold text-primary-600">10,000+</span>{" "}
+                <span className="font-semibold text-primary-600">2,000+</span>{" "}
                 Happy Customers
               </div>
             </motion.div>
@@ -154,7 +154,7 @@ export default function Hero() {
             <div className="relative z-10">
               <div className="aspect-square rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-primary-100 to-rose-100">
                 <img
-                  src="https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800"
+                  src="https://images.unsplash.com/photo-1656473031961-9d5d9ee19f40?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8YmxhY2slMjB3b21hbiUyMHBvcnRyYWl0fGVufDB8fDB8fHww"
                   alt="Premium Human Hair"
                   className="w-full h-full object-cover"
                 />

@@ -2,31 +2,24 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
-    const orderData = await request.json();
+    const { email, amount, currency, orderId, orderNumber } =
+      await request.json();
 
-    // Convert GBP to NGN (Paystack primarily works with NGN)
-    const amountInKobo = Math.round(
-      orderData.total * orderData.exchangeRate * 100
-    );
+    // Validate amount
+    if (!Number.isInteger(amount) || amount <= 0) {
+      return NextResponse.json(
+        { error: "Invalid amount: must be a positive integer in kobo" },
+        { status: 400 }
+      );
+    }
 
-    const paystackData = {
-      email: orderData.customerEmail,
-      amount: amountInKobo,
-      currency: "NGN",
-      reference: `DLX_${orderData.orderNumber}_${Date.now()}`,
-      callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/order-confirmation/${orderData.orderNumber}`,
-      metadata: {
-        orderId: orderData.orderId,
-        orderNumber: orderData.orderNumber,
-        customerName: orderData.customerName,
-        items: orderData.items.map((item) => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-      },
-      channels: ["card", "bank", "ussd", "qr", "mobile_money", "bank_transfer"],
-    };
+    // Validate currency
+    if (currency !== "NGN") {
+      return NextResponse.json(
+        { error: "Paystack only supports NGN" },
+        { status: 400 }
+      );
+    }
 
     const response = await fetch(
       "https://api.paystack.co/transaction/initialize",
@@ -36,19 +29,35 @@ export async function POST(request) {
           Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(paystackData),
+        body: JSON.stringify({
+          email,
+          amount,
+          currency,
+          reference: `DLX_${orderId}_${orderNumber}`,
+          callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/order-confirmation/${orderNumber}`,
+          metadata: {
+            order_id: orderId,
+            order_number: orderNumber,
+          },
+        }),
       }
     );
 
-    const result = await response.json();
+    const data = await response.json();
 
-    if (!result.status) {
-      throw new Error(result.message || "Payment initialization failed");
+    if (!response.ok || !data.status) {
+      return NextResponse.json(
+        { error: data.message || "Failed to initialize payment" },
+        { status: response.status }
+      );
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(data);
   } catch (error) {
-    console.error("Paystack initialization error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Paystack API error:", error);
+    return NextResponse.json(
+      { error: "Failed to initialize payment" },
+      { status: 500 }
+    );
   }
 }

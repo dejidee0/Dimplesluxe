@@ -78,7 +78,7 @@ export default function HomePage() {
     },
     {
       icon: <Users className="w-8 h-8" />,
-      title: "10K+ Happy Customers",
+      title: "2K+ Happy Customers",
       description:
         "Join thousands of satisfied customers who trust Dimplesluxe",
     },
@@ -86,40 +86,40 @@ export default function HomePage() {
 
   const testimonials = [
     {
-      name: "Sarah Johnson",
+      name: "Aisha Thompson",
       rating: 5,
       comment:
         "Absolutely love my Brazilian straight bundles! The quality is incredible and it blends perfectly with my natural hair.",
       image:
-        "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=400",
+        "https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=400",
     },
     {
-      name: "Amara Okafor",
+      name: "Nia Okonkwo",
       rating: 5,
       comment:
         "Best hair extensions I've ever purchased. The curls are so defined and bouncy. Will definitely order again!",
       image:
-        "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400",
+        "https://images.unsplash.com/photo-1658497730270-b5f4fef00ae1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8YmxhY2slMjB3b21hbiUyMHBvcnRyYWl0fGVufDB8fDB8fHww",
     },
     {
-      name: "Maya Patel",
+      name: "Zuri Davis",
       rating: 5,
       comment:
         "The customer service is amazing and the hair quality is top-notch. Fast shipping and beautiful packaging too!",
       image:
-        "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400",
+        "https://images.unsplash.com/photo-1656473031961-9d5d9ee19f40?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8YmxhY2slMjB3b21hbiUyMHBvcnRyYWl0fGVufDB8fDB8fHww",
     },
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen ">
       <Navbar />
 
       {/* Hero Section */}
       <Hero />
 
       {/* Features Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-white">
+      <section className="py-12 sm:py-16 lg:py-20 bg-white md:px-10">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 sm:mb-16">
             <h2 className="font-playfair text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
@@ -156,7 +156,7 @@ export default function HomePage() {
       </section>
 
       {/* Featured Products */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-gray-50">
+      <section className="py-12 sm:py-16 lg:py-20 bg-gray-50 md:px-10">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 sm:mb-16">
             <h2 className="font-playfair text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
@@ -218,7 +218,7 @@ export default function HomePage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-white">
+      <section className="py-12 sm:py-16 lg:py-20 bg-white md:px-10">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 sm:mb-16">
             <h2 className="font-playfair text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">

@@ -1,8 +1,9 @@
 {
   "/page": "app/page.js",
-  "/products/page": "app/products/page.js",
-  "/product/[id]/page": "app/product/[id]/page.js",
+  "/cart/page": "app/cart/page.js",
   "/checkout/page": "app/checkout/page.js",
-  "/api/payments/paystack/initialize/route": "app/api/payments/paystack/initialize/route.js",
-  "/cart/page": "app/cart/page.js"
+  "/products/page": "app/products/page.js",
+  "/order-confirmation/[orderNumber]/page": "app/order-confirmation/[orderNumber]/page.js",
+  "/not-found": "app/not-found.js",
+  "/api/payments/paypal/initialize/route": "app/api/payments/paypal/initialize/route.js"
 }

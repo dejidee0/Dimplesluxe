@@ -59,7 +59,7 @@ export default function CartPage() {
       <div className="min-h-screen bg-gray-50">
         <Navbar />
 
-        <div className="container mx-auto px-4 py-12 sm:py-16">
+        <div className="container mx-auto px-10 py-12 sm:py-16">
           <div className="max-w-2xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -101,7 +101,7 @@ export default function CartPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="container mx-auto px-10 py-6 sm:py-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <h1 className="font-playfair text-3xl sm:text-4xl font-bold text-gray-900 mb-2">

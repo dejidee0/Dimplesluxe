@@ -40,7 +40,7 @@ export default function AboutPage() {
     },
     {
       year: "2021",
-      title: "First 1000 Customers",
+      title: "First 500 Customers",
       description: "Reached our first major milestone",
     },
     {
@@ -50,8 +50,8 @@ export default function AboutPage() {
     },
     {
       year: "2023",
-      title: "10K+ Happy Customers",
-      description: "Celebrating over 10,000 satisfied customers",
+      title: "1K+ Happy Customers",
+      description: "Celebrating over 1,000 satisfied customers",
     },
     {
       year: "2024",
@@ -85,7 +85,7 @@ export default function AboutPage() {
               <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8 text-center">
                 <div>
                   <div className="text-2xl sm:text-3xl font-bold text-primary-600">
-                    10K+
+                    2K+
                   </div>
                   <div className="text-sm sm:text-base text-gray-600">
                     Happy Customers
@@ -101,7 +101,7 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <div className="text-2xl sm:text-3xl font-bold text-primary-600">
-                    50+
+                    5+
                   </div>
                   <div className="text-sm sm:text-base text-gray-600">
                     Countries Served
@@ -197,67 +197,6 @@ export default function AboutPage() {
       </section>
 
       {/* Team Section */}
-      <section className="py-12 sm:py-16 lg:py-20">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="font-playfair text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Meet Our Team
-            </h2>
-            <p className="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto">
-              The passionate people behind Dimplesluxe who make it all possible
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-4xl mx-auto">
-            {[
-              {
-                name: "Sarah Johnson",
-                role: "Founder & CEO",
-                image:
-                  "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=400",
-                bio: "Passionate about empowering women through premium hair products",
-              },
-              {
-                name: "Michael Chen",
-                role: "Head of Operations",
-                image:
-                  "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400",
-                bio: "Ensures every order meets our high quality standards",
-              },
-              {
-                name: "Amara Okafor",
-                role: "Customer Experience Lead",
-                image:
-                  "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400",
-                bio: "Dedicated to providing exceptional customer service",
-              },
-            ].map((member, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="text-center"
-              >
-                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden mx-auto mb-4">
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1">
-                  {member.name}
-                </h3>
-                <div className="text-primary-600 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
-                  {member.role}
-                </div>
-                <p className="text-gray-600 text-xs sm:text-sm">{member.bio}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-12 sm:py-16 lg:py-20 luxury-gradient text-white">

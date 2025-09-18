@@ -27,6 +27,7 @@ export default function Navbar() {
   const { getItemCount } = useCartStore();
   const { isMobileMenuOpen, toggleMobileMenu, closeAll } = useUIStore();
   const { user } = useAuthStore();
+  const { currency, setCurrency, fetchExchangeRate } = useCartStore();
 
   const itemCount = getItemCount();
 
@@ -81,7 +82,13 @@ export default function Navbar() {
       closeAll();
     }
   };
-
+  const handleCurrencyToggle = async () => {
+    const newCurrency = currency === "GBP" ? "NGN" : "GBP";
+    setCurrency(newCurrency);
+    if (newCurrency === "NGN") {
+      await fetchExchangeRate("GBP", "NGN");
+    }
+  };
   return (
     <>
       <nav
@@ -201,7 +208,7 @@ export default function Navbar() {
               >
                 <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
                 {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-xs">
+                  <span className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center ">
                     {itemCount > 99 ? "99+" : itemCount}
                   </span>
                 )}
@@ -212,6 +219,13 @@ export default function Navbar() {
               >
                 <User className="w-5 h-5 sm:w-6 sm:h-6" />
               </Link>
+              <button
+                onClick={handleCurrencyToggle}
+                className="text-gray-700 hover:text-primary-500 transition-colors p-1 text-xs sm:text-sm font-medium"
+                title={`Switch to ${currency === "GBP" ? "NGN" : "GBP"}`}
+              >
+                {currency === "GBP" ? "₦" : "£"}
+              </button>
               <button
                 onClick={toggleMobileMenu}
                 className="lg:hidden text-gray-700 hover:text-primary-500 p-1"

@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { format } from "date-fns";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import {
@@ -10,10 +11,11 @@ import {
   Truck,
   MessageCircle,
   Download,
-  Calendar,
   MapPin,
+  AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useCartStore } from "../../../lib/store";
 import { supabase } from "../../../lib/supabase";
 import { formatPrice } from "../../../lib/currency";
 import { redirectToWhatsApp } from "../../../lib/whatsapp";
@@ -21,30 +23,101 @@ import toast from "react-hot-toast";
 
 export default function OrderConfirmationPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { clearCart } = useCartStore();
   const [order, setOrder] = useState(null);
   const [orderItems, setOrderItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const orderNumber = params.orderNumber;
+  const isSuccess = searchParams.get("success") === "true";
+  const isCancelled = searchParams.get("cancelled") === "true";
+  const orderIdFromQuery = searchParams.get("orderId");
+
   useEffect(() => {
-    if (params.orderNumber) {
+    if (orderNumber) {
+      if (isCancelled) {
+        toast.error("Payment was cancelled. Please try again from checkout.");
+        router.push("/checkout");
+        return;
+      }
+
+      if (isSuccess && !orderIdFromQuery) {
+        toast.error("Invalid payment confirmation. Missing order ID.");
+        router.push("/checkout");
+        return;
+      }
+
+      if (isSuccess && orderIdFromQuery) {
+        handlePaymentSuccess(orderIdFromQuery);
+        return;
+      }
+
       fetchOrderDetails();
     }
-  }, [params.orderNumber]);
+  }, [orderNumber, isSuccess, isCancelled, orderIdFromQuery, router]);
+
+  const handlePaymentSuccess = async (orderId) => {
+    try {
+      setLoading(true);
+      const { data: order, error: verifyError } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("id", orderId)
+        .eq("order_number", orderNumber)
+        .single();
+
+      if (verifyError || !order) {
+        throw new Error("Invalid order");
+      }
+
+      if (order.status === "completed") {
+        clearCart();
+        toast.success("Payment confirmed! Order placed successfully.");
+        fetchOrderDetails();
+        return;
+      }
+
+      if (order.status !== "pending") {
+        throw new Error("Order not in pending state");
+      }
+
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({ status: "completed" })
+        .eq("id", orderId);
+
+      if (updateError) {
+        throw new Error(`Failed to confirm order: ${updateError.message}`);
+      }
+
+      clearCart();
+      toast.success("Payment confirmed! Order placed successfully.");
+      fetchOrderDetails();
+    } catch (error) {
+      console.error("Payment success confirmation error:", error);
+      toast.error("Failed to confirm payment. Please contact support.");
+      router.push("/checkout");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchOrderDetails = async () => {
     try {
       setLoading(true);
-
-      // Fetch order
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .select("*")
-        .eq("order_number", params.orderNumber)
+        .eq("order_number", orderNumber)
+        .eq("status", "completed")
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError || !orderData) {
+        throw new Error("Order not found or payment not completed");
+      }
 
-      // Fetch order items
       const { data: itemsData, error: itemsError } = await supabase
         .from("order_items")
         .select("*")
@@ -56,7 +129,8 @@ export default function OrderConfirmationPage() {
       setOrderItems(itemsData || []);
     } catch (error) {
       console.error("Error fetching order:", error);
-      toast.error("Order not found");
+      toast.error("Order not found or payment not completed");
+      setOrder(null);
     } finally {
       setLoading(false);
     }
@@ -110,9 +184,13 @@ export default function OrderConfirmationPage() {
               Order Not Found
             </h1>
             <p className="text-gray-600 mb-8">
-              We couldn't find an order with that number.
+              We couldn't find an order with that number or the payment is not
+              yet completed.
             </p>
-            <Link href="/" className="btn-primary">
+            <Link
+              href="/"
+              className="inline-block px-4 py-2 text-white bg-primary-600 rounded"
+            >
               Return Home
             </Link>
           </div>
@@ -125,10 +203,8 @@ export default function OrderConfirmationPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-
       <div className="container mx-auto px-4 py-8 sm:py-12">
         <div className="max-w-4xl mx-auto">
-          {/* Success Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -154,9 +230,7 @@ export default function OrderConfirmationPage() {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-            {/* Order Details */}
             <div className="lg:col-span-2 space-y-6 sm:space-y-8">
-              {/* Order Items */}
               <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
                 <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4 sm:mb-6">
                   Order Items
@@ -176,7 +250,6 @@ export default function OrderConfirmationPage() {
                           {item.selected_length && (
                             <p>Length: {item.selected_length}"</p>
                           )}
-
                           {item.selected_color && (
                             <p>Color: {item.selected_color}</p>
                           )}
@@ -196,7 +269,6 @@ export default function OrderConfirmationPage() {
                 </div>
               </div>
 
-              {/* Shipping Information */}
               <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
                 <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4 sm:mb-6">
                   Shipping Information
@@ -213,14 +285,12 @@ export default function OrderConfirmationPage() {
                       {order.shipping_address_line2 && (
                         <p>{order.shipping_address_line2}</p>
                       )}
-
                       <p>
                         {order.shipping_city}, {order.shipping_postcode}
                       </p>
                       <p>{order.shipping_country}</p>
                     </div>
                   </div>
-
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2 flex items-center">
                       <Truck className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary-600" />
@@ -242,7 +312,6 @@ export default function OrderConfirmationPage() {
                 </div>
               </div>
 
-              {/* Order Timeline */}
               <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
                 <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4 sm:mb-6">
                   Order Status
@@ -257,12 +326,11 @@ export default function OrderConfirmationPage() {
                         Order Confirmed
                       </div>
                       <div className="text-sm text-gray-600">
-                        {new Date(order.created_at).toLocaleDateString()} at{" "}
-                        {new Date(order.created_at).toLocaleTimeString()}
+                        {format(new Date(order.created_at), "dd/MM/yyyy")} at{" "}
+                        {format(new Date(order.created_at), "HH:mm")}
                       </div>
                     </div>
                   </div>
-
                   <div className="flex items-center space-x-4">
                     <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                       <Package className="w-5 h-5 text-gray-600" />
@@ -276,7 +344,6 @@ export default function OrderConfirmationPage() {
                       </div>
                     </div>
                   </div>
-
                   <div className="flex items-center space-x-4">
                     <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                       <Truck className="w-5 h-5 text-gray-600" />
@@ -292,19 +359,16 @@ export default function OrderConfirmationPage() {
               </div>
             </div>
 
-            {/* Order Summary */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 sticky top-8">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4 sm:mb-6">
                   Order Summary
                 </h2>
-
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-gray-600 text-sm sm:text-base">
                     <span>Subtotal</span>
                     <span>{formatPrice(order.subtotal, order.currency)}</span>
                   </div>
-
                   <div className="flex justify-between text-gray-600 text-sm sm:text-base">
                     <span>Shipping</span>
                     <span>
@@ -315,7 +379,6 @@ export default function OrderConfirmationPage() {
                       )}
                     </span>
                   </div>
-
                   {order.tax > 0 && (
                     <div className="flex justify-between text-gray-600 text-sm sm:text-base">
                       <span>Tax</span>
@@ -323,15 +386,12 @@ export default function OrderConfirmationPage() {
                     </div>
                   )}
                 </div>
-
                 <div className="border-t pt-4 mb-6">
                   <div className="flex justify-between font-semibold text-lg sm:text-xl text-gray-900">
                     <span>Total</span>
                     <span>{formatPrice(order.total, order.currency)}</span>
                   </div>
                 </div>
-
-                {/* Action Buttons */}
                 <div className="space-y-3">
                   <button
                     onClick={handleWhatsAppContact}
@@ -340,21 +400,17 @@ export default function OrderConfirmationPage() {
                     <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span>Contact via WhatsApp</span>
                   </button>
-
-                  <button className="w-full btn-secondary flex items-center justify-center space-x-2 text-sm sm:text-base">
+                  <button className="w-full bg-gray-200 text-gray-900 font-semibold px-4 py-3 rounded-xl hover:bg-gray-300 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base">
                     <Download className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span>Download Receipt</span>
                   </button>
-
                   <Link
                     href="/products"
-                    className="w-full btn-primary text-center block text-sm sm:text-base"
+                    className="w-full inline-block px-4 py-3 text-white bg-primary-600 rounded-xl hover:bg-primary-700 transition-colors text-center text-sm sm:text-base"
                   >
                     Continue Shopping
                   </Link>
                 </div>
-
-                {/* Contact Information */}
                 <div className="mt-6 pt-6 border-t text-center">
                   <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">
                     Need Help?
@@ -370,7 +426,6 @@ export default function OrderConfirmationPage() {
           </div>
         </div>
       </div>
-
       <Footer />
     </div>
   );
