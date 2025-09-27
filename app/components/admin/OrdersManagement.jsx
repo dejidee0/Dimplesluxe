@@ -207,9 +207,6 @@ const OrdersManagement = ({
                   <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">
                     Date
                   </th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">
-                    Actions
-                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -287,22 +284,6 @@ const OrdersManagement = ({
                             minute: "2-digit",
                           })}
                         </p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex space-x-2">
-                        <button
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="View order details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Edit order"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
                       </div>
                     </td>
                   </tr>

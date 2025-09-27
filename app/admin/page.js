@@ -46,6 +46,7 @@ export default function AdminPage() {
   useEffect(() => {
     fetchDashboardData();
     fetchCategories();
+    console.log("User data:", user);
   }, []);
 
   const tabs = [
