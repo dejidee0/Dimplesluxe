@@ -12,8 +12,21 @@ import {
   Eye,
   Calendar,
   CreditCard,
+  MapPin,
+  Phone,
+  Mail,
+  Edit3,
+  ShoppingBag,
+  Star,
+  Clock,
+  CheckCircle,
+  Truck,
+  AlertCircle,
+  ArrowRight,
+  Plus,
+  Trash2,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore, useWishlistStore } from "../../lib/store";
 import { supabase } from "../../lib/supabase";
 import { formatPrice } from "../../lib/currency";
@@ -31,6 +44,14 @@ export default function AccountPage() {
     addToWishlist,
   } = useWishlistStore();
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState({
+    first_name: "",
+    last_name: "",
+    phone: "",
+    address: "",
+    city: "",
+    postcode: "",
+  });
 
   useEffect(() => {
     if (!user) {
@@ -44,13 +65,23 @@ export default function AccountPage() {
     try {
       setLoading(true);
 
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (profileData) {
+        setProfile(profileData);
+      }
+
       // Fetch orders
       const { data: ordersData } = await supabase
         .from("orders")
         .select("*")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
+        .order("created_at", { ascending: false });
 
       // Fetch wishlist
       const { data: wishlistData } = await supabase
@@ -64,6 +95,7 @@ export default function AccountPage() {
         .eq("user_id", user.id);
 
       setOrders(ordersData || []);
+
       // Convert wishlistData to product objects for the store
       if (wishlistData) {
         const wishlistProducts = wishlistData
@@ -78,6 +110,7 @@ export default function AccountPage() {
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
+      toast.error("Error loading account data");
     } finally {
       setLoading(false);
     }
@@ -108,26 +141,92 @@ export default function AccountPage() {
     }
   };
 
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "delivered":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200";
+      case "shipped":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "processing":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "pending":
+        return "bg-gray-100 text-gray-800 border-gray-200";
+      case "cancelled":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status?.toLowerCase()) {
+      case "delivered":
+        return <CheckCircle className="w-3 h-3" />;
+      case "shipped":
+        return <Truck className="w-3 h-3" />;
+      case "processing":
+        return <Clock className="w-3 h-3" />;
+      case "pending":
+        return <AlertCircle className="w-3 h-3" />;
+      default:
+        return <AlertCircle className="w-3 h-3" />;
+    }
+  };
+
   const tabs = [
     {
       id: "overview",
       label: "Overview",
-      icon: <User className="w-4 h-4 sm:w-5 sm:h-5" />,
+      icon: <User className="w-5 h-5" />,
+      color: "text-pink-600",
     },
     {
       id: "orders",
       label: "Orders",
-      icon: <Package className="w-4 h-4 sm:w-5 sm:h-5" />,
+      icon: <Package className="w-5 h-5" />,
+      color: "text-pink-600",
     },
     {
       id: "wishlist",
       label: "Wishlist",
-      icon: <Heart className="w-4 h-4 sm:w-5 sm:h-5" />,
+      icon: <Heart className="w-5 h-5" />,
+      color: "text-pink-600",
     },
     {
       id: "settings",
       label: "Settings",
-      icon: <Settings className="w-4 h-4 sm:w-5 sm:h-5" />,
+      icon: <Settings className="w-5 h-5" />,
+      color: "text-pink-600",
+    },
+  ];
+
+  const totalSpent = orders.reduce(
+    (sum, order) => sum + parseFloat(order.total || 0),
+    0
+  );
+
+  // Professional stat cards with sophisticated colors
+  const statsCards = [
+    {
+      title: "Total Orders",
+      value: orders.length,
+      icon: <Package className="w-6 h-6" />,
+      color: "bg-slate-700",
+      textColor: "text-white",
+    },
+    {
+      title: "Wishlist Items",
+      value: wishlist.length,
+      icon: <Heart className="w-6 h-6" />,
+      color: "bg-stone-600",
+      textColor: "text-white",
+    },
+    {
+      title: "Total Spent",
+      value: formatPrice(totalSpent),
+      icon: <CreditCard className="w-6 h-6" />,
+      color: "bg-zinc-700",
+      textColor: "text-white",
     },
   ];
 
@@ -139,68 +238,91 @@ export default function AccountPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="font-playfair text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+        <div className="mb-8">
+          <h1 className="font-playfair text-4xl font-bold text-gray-900 mb-2">
             My Account
           </h1>
-          <p className="text-gray-600 text-sm sm:text-base">
-            Welcome back, {user.user_metadata?.first_name || user.email}
+          <p className="text-gray-600">
+            Welcome back,{" "}
+            {profile.first_name || user.user_metadata?.first_name || user.email}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
-              <div className="flex items-center space-x-3 sm:space-x-4 mb-6 sm:mb-8">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary-100 rounded-full flex items-center justify-center">
-                  <User className="w-6 h-6 sm:w-8 sm:h-8 text-primary-600" />
+          <div className="lg:w-80 flex-shrink-0">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-6">
+              {/* Profile Header */}
+              <div className="flex items-center space-x-4 mb-8">
+                <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full flex items-center justify-center">
+                  <User className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
-                    {user.user_metadata?.first_name || "User"}
+                  <h3 className="font-semibold text-gray-900 text-lg">
+                    {profile.first_name ||
+                      user.user_metadata?.first_name ||
+                      "User"}
                   </h3>
-                  <p className="text-gray-600 text-xs sm:text-sm">
-                    {user.email}
-                  </p>
+                  <p className="text-gray-600 text-sm">{user.email}</p>
+                  <div className="flex items-center space-x-1 mt-1">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span className="text-xs text-gray-500">Active</span>
+                  </div>
                 </div>
               </div>
 
+              {/* Navigation */}
               <nav className="space-y-2">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center space-x-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg transition-colors text-left text-sm sm:text-base ${
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                       activeTab === tab.id
-                        ? "bg-primary-50 text-primary-600 border border-primary-200"
-                        : "text-gray-600 hover:bg-gray-50"
+                        ? "bg-gradient-to-r from-pink-50 to-rose-50 text-pink-600 shadow-sm border border-pink-100"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     }`}
                   >
-                    {tab.icon}
-                    <span>{tab.label}</span>
+                    <div
+                      className={`${
+                        activeTab === tab.id
+                          ? tab.color
+                          : "text-gray-400 group-hover:text-gray-600"
+                      }`}
+                    >
+                      {tab.icon}
+                    </div>
+                    <span className="font-medium">{tab.label}</span>
+                    {activeTab === tab.id && (
+                      <motion.div
+                        layoutId="activeAccountTab"
+                        className="ml-auto w-2 h-2 bg-pink-500 rounded-full"
+                      />
+                    )}
                   </button>
                 ))}
 
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center space-x-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors text-left text-sm sm:text-base"
-                >
-                  <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>Logout</span>
-                </button>
+                <div className="pt-4 border-t border-gray-100">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span className="font-medium">Logout</span>
+                  </button>
+                </div>
               </nav>
             </div>
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
+          <div className="flex-1">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600"></div>
                 </div>
               ) : (
                 <>
@@ -209,116 +331,161 @@ export default function AccountPage() {
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
+                      className="space-y-8"
                     >
-                      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-6 sm:mb-8">
-                        Account Overview
-                      </h2>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
-                        <div className="bg-gradient-to-r from-primary-500 to-rose-500 text-white p-4 sm:p-6 rounded-xl">
-                          <Package className="w-6 h-6 sm:w-8 sm:h-8 mb-2 sm:mb-3" />
-                          <div className="text-2xl sm:text-3xl font-bold">
-                            {orders.length}
-                          </div>
-                          <div className="text-sm sm:text-base opacity-90">
-                            Total Orders
-                          </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 sm:p-6 rounded-xl">
-                          <Heart className="w-6 h-6 sm:w-8 sm:h-8 mb-2 sm:mb-3" />
-                          <div className="text-2xl sm:text-3xl font-bold">
-                            {wishlist.length}
-                          </div>
-                          <div className="text-sm sm:text-base opacity-90">
-                            Wishlist Items
-                          </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-green-500 to-teal-500 text-white p-4 sm:p-6 rounded-xl">
-                          <CreditCard className="w-6 h-6 sm:w-8 sm:h-8 mb-2 sm:mb-3" />
-                          <div className="text-2xl sm:text-3xl font-bold">
-                            £
-                            {orders
-                              .reduce(
-                                (sum, order) =>
-                                  sum + parseFloat(order.total || 0),
-                                0
-                              )
-                              .toFixed(2)}
-                          </div>
-                          <div className="text-sm sm:text-base opacity-90">
-                            Total Spent
-                          </div>
-                        </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                          Account Overview
+                        </h2>
+                        <p className="text-gray-600">
+                          Manage your account and view your activity
+                        </p>
                       </div>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {statsCards.map((card, index) => (
+                          <motion.div
+                            key={card.title}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className={`${card.color} p-6 rounded-2xl text-white shadow-lg hover:shadow-xl transition-shadow duration-300`}
+                          >
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="p-2 rounded-xl bg-white bg-opacity-20">
+                                {card.icon}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-sm opacity-90">{card.title}</p>
+                              <p className="text-2xl font-bold">{card.value}</p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {/* Recent Activity */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {/* Recent Orders */}
                         <div>
-                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
-                            Recent Orders
-                          </h3>
-                          <div className="space-y-3 sm:space-y-4">
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              Recent Orders
+                            </h3>
+                            <button
+                              onClick={() => setActiveTab("orders")}
+                              className="text-pink-600 hover:text-pink-700 text-sm font-medium flex items-center space-x-1"
+                            >
+                              <span>View all</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="space-y-4">
                             {orders.slice(0, 3).map((order) => (
                               <div
                                 key={order.id}
-                                className="border border-gray-200 rounded-lg p-3 sm:p-4"
+                                className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
                               >
-                                <div className="flex justify-between items-start mb-2">
-                                  <div className="text-sm sm:text-base font-medium text-gray-900">
-                                    #{order.order_number}
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 bg-gradient-to-r from-pink-100 to-rose-100 rounded-lg flex items-center justify-center">
+                                      <Package className="w-5 h-5 text-pink-600" />
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-gray-900">
+                                        #
+                                        {order.order_number ||
+                                          `ORD-${order.id}`}
+                                      </p>
+                                      <p className="text-sm text-gray-600">
+                                        {new Date(
+                                          order.created_at
+                                        ).toLocaleDateString()}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div
-                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      order.status === "delivered"
-                                        ? "bg-green-100 text-green-800"
-                                        : order.status === "shipped"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : order.status === "processing"
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-gray-100 text-gray-800"
-                                    }`}
-                                  >
-                                    {order.status}
+                                  <div className="text-right">
+                                    <p className="font-semibold text-gray-900">
+                                      {formatPrice(order.total, order.currency)}
+                                    </p>
+                                    <div
+                                      className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                                        order.status
+                                      )}`}
+                                    >
+                                      {getStatusIcon(order.status)}
+                                      <span className="capitalize">
+                                        {order.status}
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="text-xs sm:text-sm text-gray-600 mb-1">
-                                  {new Date(
-                                    order.created_at
-                                  ).toLocaleDateString()}
-                                </div>
-                                <div className="text-sm sm:text-base font-semibold text-gray-900">
-                                  {formatPrice(order.total, order.currency)}
                                 </div>
                               </div>
                             ))}
+                            {orders.length === 0 && (
+                              <div className="text-center py-8">
+                                <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                <p className="text-gray-500">No orders yet</p>
+                                <button
+                                  onClick={() => router.push("/products")}
+                                  className="mt-2 text-pink-600 hover:text-pink-700 text-sm font-medium"
+                                >
+                                  Start shopping
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        {/* Recent Wishlist */}
+                        {/* Wishlist Preview */}
                         <div>
-                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
-                            Wishlist Preview
-                          </h3>
-                          <div className="space-y-3 sm:space-y-4">
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              Wishlist
+                            </h3>
+                            <button
+                              onClick={() => setActiveTab("wishlist")}
+                              className="text-pink-600 hover:text-pink-700 text-sm font-medium flex items-center space-x-1"
+                            >
+                              <span>View all</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="space-y-4">
                             {wishlist.slice(0, 3).map((item) => (
                               <div
                                 key={item.id}
-                                className="flex items-center space-x-3 sm:space-x-4 border border-gray-200 rounded-lg p-3 sm:p-4"
+                                className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
                               >
-                                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-lg flex-shrink-0"></div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm sm:text-base font-medium text-gray-900 truncate">
+                                <div className="w-12 h-12 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg"></div>
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900 truncate">
                                     {item.name || "Product"}
-                                  </div>
-                                  <div className="text-xs sm:text-sm text-gray-600">
+                                  </p>
+                                  <p className="text-sm text-pink-600 font-semibold">
                                     {formatPrice(item.price || 0)}
-                                  </div>
+                                  </p>
                                 </div>
+                                <button className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                  <Heart className="w-4 h-4 fill-current" />
+                                </button>
                               </div>
                             ))}
+                            {wishlist.length === 0 && (
+                              <div className="text-center py-8">
+                                <Heart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                <p className="text-gray-500">
+                                  No items in wishlist
+                                </p>
+                                <button
+                                  onClick={() => router.push("/products")}
+                                  className="mt-2 text-pink-600 hover:text-pink-700 text-sm font-medium"
+                                >
+                                  Browse products
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -330,81 +497,104 @@ export default function AccountPage() {
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
+                      className="space-y-6"
                     >
-                      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-6 sm:mb-8">
-                        Order History
-                      </h2>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                          Order History
+                        </h2>
+                        <p className="text-gray-600">
+                          Track and manage your orders
+                        </p>
+                      </div>
 
                       {orders.length === 0 ? (
-                        <div className="text-center py-8 sm:py-12">
-                          <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                        <div className="text-center py-16">
+                          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <ShoppingBag className="w-12 h-12 text-gray-400" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-gray-900 mb-2">
                             No orders yet
                           </h3>
-                          <p className="text-gray-600 mb-6 text-sm sm:text-base">
+                          <p className="text-gray-600 mb-8">
                             Start shopping to see your orders here
                           </p>
                           <button
                             onClick={() => router.push("/products")}
-                            className="btn-primary text-sm sm:text-base"
+                            className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
                           >
                             Browse Products
                           </button>
                         </div>
                       ) : (
-                        <div className="space-y-4 sm:space-y-6">
+                        <div className="space-y-6">
                           {orders.map((order) => (
                             <div
                               key={order.id}
-                              className="border border-gray-200 rounded-xl p-4 sm:p-6"
+                              className="bg-gray-50 border border-gray-200 rounded-2xl p-6 hover:shadow-sm transition-shadow"
                             >
-                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 space-y-2 sm:space-y-0">
-                                <div>
-                                  <div className="text-base sm:text-lg font-semibold text-gray-900">
-                                    Order #{order.order_number}
+                              <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-3 mb-3">
+                                    <div className="w-12 h-12 bg-gradient-to-r from-pink-100 to-rose-100 rounded-xl flex items-center justify-center">
+                                      <Package className="w-6 h-6 text-pink-600" />
+                                    </div>
+                                    <div>
+                                      <h3 className="font-semibold text-gray-900 text-lg">
+                                        Order #
+                                        {order.order_number ||
+                                          `ORD-${order.id}`}
+                                      </h3>
+                                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                        <span className="flex items-center">
+                                          <Calendar className="w-4 h-4 mr-1" />
+                                          {new Date(
+                                            order.created_at
+                                          ).toLocaleDateString()}
+                                        </span>
+                                        <span className="flex items-center">
+                                          <CreditCard className="w-4 h-4 mr-1" />
+                                          {formatPrice(
+                                            order.total,
+                                            order.currency
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="text-xs sm:text-sm text-gray-600 flex items-center space-x-4">
-                                    <span className="flex items-center">
-                                      <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                                      {new Date(
-                                        order.created_at
-                                      ).toLocaleDateString()}
-                                    </span>
-                                    <span>
-                                      {formatPrice(order.total, order.currency)}
-                                    </span>
-                                  </div>
+
+                                  {order.shipping_address && (
+                                    <div className="text-sm text-gray-600">
+                                      <p className="flex items-center">
+                                        <MapPin className="w-4 h-4 mr-2" />
+                                        Delivery to: {order.shipping_city},{" "}
+                                        {order.shipping_postcode}
+                                      </p>
+                                      {order.tracking_number && (
+                                        <p className="mt-1">
+                                          Tracking: {order.tracking_number}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="flex items-center space-x-3">
+
+                                <div className="flex items-center space-x-4">
                                   <div
-                                    className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${
-                                      order.status === "delivered"
-                                        ? "bg-green-100 text-green-800"
-                                        : order.status === "shipped"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : order.status === "processing"
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-gray-100 text-gray-800"
-                                    }`}
+                                    className={`inline-flex items-center space-x-1 px-3 py-2 rounded-full text-sm font-medium border ${getStatusColor(
+                                      order.status
+                                    )}`}
                                   >
-                                    {order.status}
+                                    {getStatusIcon(order.status)}
+                                    <span className="capitalize">
+                                      {order.status}
+                                    </span>
                                   </div>
-                                  <button className="text-primary-600 hover:text-primary-700 text-xs sm:text-sm font-medium">
-                                    <Eye className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                                    View Details
+                                  <button className="flex items-center space-x-2 text-pink-600 hover:text-pink-700 font-medium">
+                                    <Eye className="w-4 h-4" />
+                                    <span>View Details</span>
                                   </button>
                                 </div>
-                              </div>
-
-                              <div className="text-xs sm:text-sm text-gray-600">
-                                <p>
-                                  Delivery to: {order.shipping_city},{" "}
-                                  {order.shipping_postcode}
-                                </p>
-                                {order.tracking_number && (
-                                  <p>Tracking: {order.tracking_number}</p>
-                                )}
                               </div>
                             </div>
                           ))}
@@ -418,56 +608,89 @@ export default function AccountPage() {
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
+                      className="space-y-6"
                     >
-                      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-6 sm:mb-8">
-                        My Wishlist
-                      </h2>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                          My Wishlist
+                        </h2>
+                        <p className="text-gray-600">
+                          Save items you love for later
+                        </p>
+                      </div>
 
                       {wishlist.length === 0 ? (
-                        <div className="text-center py-8 sm:py-12">
-                          <Heart className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                        <div className="text-center py-16">
+                          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Heart className="w-12 h-12 text-gray-400" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-gray-900 mb-2">
                             Your wishlist is empty
                           </h3>
-                          <p className="text-gray-600 mb-6 text-sm sm:text-base">
+                          <p className="text-gray-600 mb-8">
                             Save items you love for later
                           </p>
                           <button
                             onClick={() => router.push("/products")}
-                            className="btn-primary text-sm sm:text-base"
+                            className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
                           >
                             Browse Products
                           </button>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {wishlist.map((item) => (
-                            <div
+                            <motion.div
                               key={item.id}
-                              className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="bg-gray-50 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
                             >
-                              <div className="h-32 sm:h-48 bg-gray-200"></div>
-                              <div className="p-3 sm:p-4">
-                                <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base truncate">
+                              <div className="h-48 bg-gradient-to-br from-gray-200 to-gray-300 relative">
+                                {item.images && item.images.length > 0 ? (
+                                  <img
+                                    src={item.images[0]}
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Package className="w-12 h-12 text-gray-400" />
+                                  </div>
+                                )}
+                                <div className="absolute top-3 right-3">
+                                  <div className="flex items-center space-x-1 bg-white rounded-full px-2 py-1 text-xs shadow-sm">
+                                    <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                                    <span className="font-medium">4.8</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="p-4">
+                                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
                                   {item.name || "Product"}
                                 </h3>
-                                <div className="text-sm sm:text-base font-bold text-primary-600 mb-3">
-                                  {formatPrice(item.price || 0)}
+                                <div className="flex items-center justify-between mb-4">
+                                  <span className="text-lg font-bold text-pink-600">
+                                    {formatPrice(item.price || 0)}
+                                  </span>
+                                  <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+                                    In Stock
+                                  </span>
                                 </div>
                                 <div className="flex space-x-2">
-                                  <button className="flex-1 bg-primary-500 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-primary-600 transition-colors">
-                                    Add to Cart
+                                  <button className="flex-1 bg-slate-700 hover:bg-slate-800 text-white py-2 px-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-1">
+                                    <ShoppingBag className="w-4 h-4" />
+                                    <span>Add to Cart</span>
                                   </button>
                                   <button
                                     onClick={() => removeFromWishlist(item.id)}
-                                    className="px-3 py-2 border border-gray-300 rounded-lg text-xs sm:text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                                    className="bg-red-100 hover:bg-red-200 text-red-700 py-2 px-3 rounded-lg transition-colors"
                                   >
-                                    Remove
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               </div>
-                            </div>
+                            </motion.div>
                           ))}
                         </div>
                       )}
@@ -479,96 +702,265 @@ export default function AccountPage() {
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
+                      className="space-y-8"
                     >
-                      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-6 sm:mb-8">
-                        Account Settings
-                      </h2>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                          Account Settings
+                        </h2>
+                        <p className="text-gray-600">
+                          Manage your personal information and preferences
+                        </p>
+                      </div>
 
-                      <div className="space-y-6 sm:space-y-8">
-                        {/* Profile Information */}
-                        <div className="border border-gray-200 rounded-xl p-4 sm:p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      {/* Profile Information */}
+                      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-lg font-semibold text-gray-900">
                             Profile Information
                           </h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                First Name
-                              </label>
-                              <input
-                                type="text"
-                                defaultValue={
-                                  user.user_metadata?.first_name || ""
-                                }
-                                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Last Name
-                              </label>
-                              <input
-                                type="text"
-                                defaultValue={
-                                  user.user_metadata?.last_name || ""
-                                }
-                                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
-                              />
-                            </div>
-                            <div className="sm:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Email
-                              </label>
-                              <input
-                                type="email"
-                                defaultValue={user.email}
-                                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
-                                disabled
-                              />
-                            </div>
-                          </div>
-                          <button className="mt-4 btn-primary text-sm sm:text-base">
-                            Update Profile
+                          <button className="text-pink-600 hover:text-pink-700 font-medium flex items-center space-x-1">
+                            <Edit3 className="w-4 h-4" />
+                            <span>Edit</span>
                           </button>
                         </div>
 
-                        {/* Password Change */}
-                        <div className="border border-gray-200 rounded-xl p-4 sm:p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              First Name
+                            </label>
+                            <input
+                              type="text"
+                              defaultValue={
+                                profile.first_name ||
+                                user.user_metadata?.first_name ||
+                                ""
+                              }
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                              placeholder="Enter your first name"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Last Name
+                            </label>
+                            <input
+                              type="text"
+                              defaultValue={
+                                profile.last_name ||
+                                user.user_metadata?.last_name ||
+                                ""
+                              }
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                              placeholder="Enter your last name"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Email Address
+                            </label>
+                            <input
+                              type="email"
+                              defaultValue={user.email}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                              disabled
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Phone Number
+                            </label>
+                            <input
+                              type="tel"
+                              defaultValue={profile.phone || ""}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                              placeholder="Enter your phone number"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-6">
+                          <button className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl">
+                            Update Profile
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Shipping Address */}
+                      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            Shipping Address
+                          </h3>
+                          <button className="text-pink-600 hover:text-pink-700 font-medium flex items-center space-x-1">
+                            <Edit3 className="w-4 h-4" />
+                            <span>Edit</span>
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Street Address
+                            </label>
+                            <input
+                              type="text"
+                              defaultValue={profile.address || ""}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                              placeholder="Enter your street address"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              City
+                            </label>
+                            <input
+                              type="text"
+                              defaultValue={profile.city || ""}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                              placeholder="Enter your city"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Postcode
+                            </label>
+                            <input
+                              type="text"
+                              defaultValue={profile.postcode || ""}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                              placeholder="Enter your postcode"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-6">
+                          <button className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                            Update Address
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Password Change */}
+                      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-lg font-semibold text-gray-900">
                             Change Password
                           </h3>
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Current Password
-                              </label>
-                              <input
-                                type="password"
-                                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                New Password
-                              </label>
-                              <input
-                                type="password"
-                                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Confirm New Password
-                              </label>
-                              <input
-                                type="password"
-                                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
-                              />
-                            </div>
+                          <div className="flex items-center space-x-2 text-sm text-gray-600">
+                            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                            <span>Secure</span>
                           </div>
-                          <button className="mt-4 btn-primary text-sm sm:text-base">
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Current Password
+                            </label>
+                            <input
+                              type="password"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                              placeholder="Enter your current password"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              New Password
+                            </label>
+                            <input
+                              type="password"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                              placeholder="Enter your new password"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Confirm New Password
+                            </label>
+                            <input
+                              type="password"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                              placeholder="Confirm your new password"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-6">
+                          <button className="bg-stone-600 hover:bg-stone-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
                             Update Password
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Account Preferences */}
+                      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                          Preferences
+                        </h3>
+
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-medium text-gray-900">
+                                Email Notifications
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                Receive updates about your orders and promotions
+                              </p>
+                            </div>
+                            <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-pink-500 transition-colors">
+                              <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6"></span>
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-medium text-gray-900">
+                                SMS Updates
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                Get text messages about order status
+                              </p>
+                            </div>
+                            <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 transition-colors">
+                              <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-medium text-gray-900">
+                                Marketing Communications
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                Receive news about new products and sales
+                              </p>
+                            </div>
+                            <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-pink-500 transition-colors">
+                              <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6"></span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Danger Zone */}
+                      <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+                        <h3 className="text-lg font-semibold text-red-900 mb-4">
+                          Danger Zone
+                        </h3>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium text-red-900">
+                              Delete Account
+                            </h4>
+                            <p className="text-sm text-red-700">
+                              Permanently delete your account and all data
+                            </p>
+                          </div>
+                          <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                            Delete Account
                           </button>
                         </div>
                       </div>

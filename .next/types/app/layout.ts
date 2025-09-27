@@ -1,4 +1,4 @@
-// File: C:\Users\D\Downloads\Dimplesluxe\project\app\layout.js
+// File: C:\Users\D\Desktop\Dimplesluxe\project\app\layout.js
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

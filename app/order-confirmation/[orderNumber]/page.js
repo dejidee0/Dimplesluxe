@@ -361,7 +361,7 @@ export default function OrderConfirmationPage() {
                   </h3>
                   <div className="text-xs sm:text-sm text-gray-600 space-y-1">
                     <p>Email: hello@dimplesluxe.com</p>
-                    <p>Phone: +44 7123 456789</p>
+
                     <p>Mon-Fri: 9AM-6PM GMT</p>
                   </div>
                 </div>

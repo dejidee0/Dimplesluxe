@@ -154,7 +154,7 @@ export default function Hero() {
             <div className="relative z-10">
               <div className="aspect-square rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-primary-100 to-rose-100">
                 <img
-                  src="https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800"
+                  src="https://images.unsplash.com/photo-1656473031961-9d5d9ee19f40?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8YmxhY2slMjB3b21hbiUyMHBvcnRyYWl0fGVufDB8fDB8fHww"
                   alt="Premium Human Hair"
                   className="w-full h-full object-cover"
                 />

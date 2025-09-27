@@ -1,4 +1,4 @@
-// File: C:\Users\D\Downloads\Dimplesluxe\project\app\account\page.js
+// File: C:\Users\D\Desktop\Dimplesluxe\project\app\account\page.js
 import * as entry from '../../../../app/account/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

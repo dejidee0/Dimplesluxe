@@ -23,14 +23,18 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [isClient, setIsClient] = useState(false);
 
   const { getItemCount } = useCartStore();
   const { isMobileMenuOpen, toggleMobileMenu, closeAll } = useUIStore();
   const { user } = useAuthStore();
 
-  const itemCount = getItemCount();
+  // Only get item count on client side to prevent hydration mismatch
+  const itemCount = isClient ? getItemCount() : 0;
 
   useEffect(() => {
+    setIsClient(true);
+
     const fetchCategories = async () => {
       try {
         const { data, error } = await supabase
@@ -82,6 +86,90 @@ export default function Navbar() {
     }
   };
 
+  // Don't render dynamic content until client-side hydration is complete
+  if (!isClient) {
+    return (
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white">
+        {/* Top Bar */}
+        <div className="bg-gradient-to-r from-primary-500 to-rose-500 text-white py-2">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-center text-xs sm:text-sm">
+              <div className="flex items-center space-x-2 sm:space-x-4">
+                <span className="hidden sm:inline">
+                  Free UK delivery on orders over £50
+                </span>
+                <span className="sm:hidden">Free delivery over £50</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Navigation */}
+        <div className="container mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <Link href="/" className="flex items-center space-x-2">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full luxury-gradient flex items-center justify-center">
+                <span className="text-white font-playfair font-bold text-lg sm:text-xl">
+                  D
+                </span>
+              </div>
+              <span className="font-playfair text-xl sm:text-2xl font-bold gradient-text">
+                Dimplesluxe
+              </span>
+            </Link>
+
+            {/* Placeholder for desktop nav */}
+            <div className="hidden lg:flex items-center space-x-6 xl:space-x-8">
+              {/* Categories will load after hydration */}
+            </div>
+
+            {/* Search Bar - Desktop */}
+            <div className="hidden md:flex items-center bg-gray-100 rounded-full px-4 py-2 w-64 lg:w-80">
+              <Search className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400 mr-3" />
+              <input
+                type="text"
+                placeholder="Search for premium hair..."
+                className="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400 text-sm"
+                disabled
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <button className="md:hidden text-gray-700 hover:text-primary-500 p-1">
+                <Search className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+              <Link
+                href="/wishlist"
+                className="text-gray-700 hover:text-primary-500 transition-colors p-1"
+              >
+                <Heart className="w-5 h-5 sm:w-6 sm:h-6" />
+              </Link>
+              <Link
+                href="/cart"
+                className="relative text-gray-700 hover:text-primary-500 transition-colors p-1"
+              >
+                <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
+                {/* Cart badge will appear after hydration */}
+              </Link>
+              <Link
+                href="/auth/login"
+                className="text-gray-700 hover:text-primary-500 transition-colors p-1"
+              >
+                <User className="w-5 h-5 sm:w-6 sm:h-6" />
+              </Link>
+              <button className="lg:hidden text-gray-700 hover:text-primary-500 p-1">
+                <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="h-24 sm:h-28 lg:h-32"></div>
+      </nav>
+    );
+  }
+
   return (
     <>
       <nav
@@ -95,14 +183,9 @@ export default function Navbar() {
             <div className="flex justify-between items-center text-xs sm:text-sm">
               <div className="flex items-center space-x-2 sm:space-x-4">
                 <span className="hidden sm:inline">
-                  Free UK delivery on orders over £50
+                  Free UK delivery on orders over £5
                 </span>
-                <span className="sm:hidden">Free delivery over £50</span>
-              </div>
-              <div className="flex items-center space-x-2 sm:space-x-4">
-                <Phone className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">+44 7123 456789</span>
-                <span className="sm:hidden">Call Us</span>
+                <span className="sm:hidden">Free delivery over £5</span>
               </div>
             </div>
           </div>
@@ -201,7 +284,7 @@ export default function Navbar() {
               >
                 <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
                 {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-xs">
+                  <span className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
                     {itemCount > 99 ? "99+" : itemCount}
                   </span>
                 )}

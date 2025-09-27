@@ -85,7 +85,7 @@ export default function AboutPage() {
               <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8 text-center">
                 <div>
                   <div className="text-2xl sm:text-3xl font-bold text-primary-600">
-                    10K+
+                    2K+
                   </div>
                   <div className="text-sm sm:text-base text-gray-600">
                     Happy Customers
@@ -93,7 +93,7 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <div className="text-2xl sm:text-3xl font-bold text-primary-600">
-                    5★
+                    4.98★
                   </div>
                   <div className="text-sm sm:text-base text-gray-600">
                     Average Rating
@@ -101,7 +101,7 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <div className="text-2xl sm:text-3xl font-bold text-primary-600">
-                    50+
+                    2+
                   </div>
                   <div className="text-sm sm:text-base text-gray-600">
                     Countries Served
@@ -151,53 +151,9 @@ export default function AboutPage() {
       </section>
 
       {/* Our Journey */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="font-playfair text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Our Journey
-            </h2>
-            <p className="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto">
-              From humble beginnings to becoming a trusted name in premium hair
-            </p>
-          </div>
-
-          <div className="max-w-4xl mx-auto">
-            {milestones.map((milestone, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className={`flex flex-col sm:flex-row items-center mb-8 sm:mb-12 ${
-                  index % 2 === 0 ? "sm:flex-row" : "sm:flex-row-reverse"
-                }`}
-              >
-                <div className="flex-1 p-4 sm:p-6 mb-4 sm:mb-0">
-                  <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
-                    <div className="text-primary-600 font-bold text-xl sm:text-2xl mb-2">
-                      {milestone.year}
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                      {milestone.title}
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-600">
-                      {milestone.description}
-                    </p>
-                  </div>
-                </div>
-                <div className="w-8 h-8 sm:w-12 sm:h-12 bg-primary-500 rounded-full flex items-center justify-center mx-4 sm:mx-8 flex-shrink-0">
-                  <Star className="w-4 h-4 sm:w-6 sm:h-6 text-white fill-current" />
-                </div>
-                <div className="flex-1 hidden sm:block"></div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Team Section */}
-      <section className="py-12 sm:py-16 lg:py-20">
+      {/* <section className="py-12 sm:py-16 lg:py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 sm:mb-16">
             <h2 className="font-playfair text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
@@ -257,7 +213,7 @@ export default function AboutPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* CTA Section */}
       <section className="py-12 sm:py-16 lg:py-20 luxury-gradient text-white">
