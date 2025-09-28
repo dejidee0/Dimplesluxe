@@ -238,25 +238,6 @@ export default function ContactPage() {
                     </p>
                   </div>
                 </div>
-
-                <div className="flex items-start space-x-3 sm:space-x-4 p-4 sm:p-6 bg-white rounded-2xl shadow-lg">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">
-                      Address
-                    </h3>
-                    <p className="text-gray-600 mb-1 sm:mb-2 text-sm sm:text-base">
-                      123 Fashion Street
-                      <br />
-                      London, UK SW1A 1AA
-                    </p>
-                    <p className="text-xs sm:text-sm text-gray-500">
-                      Showroom by appointment only
-                    </p>
-                  </div>
-                </div>
               </div>
             </motion.div>
           </div>
