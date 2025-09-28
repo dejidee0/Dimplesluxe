@@ -368,7 +368,7 @@ export default function Navbar() {
             </div>
 
             {/* Right Section - Action Buttons */}
-            <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 lg:space-x-4">
+            <div className="flex items-center space-x-3 sm:space-x-2 md:space-x-3 lg:space-x-4">
               {/* Search Toggle */}
               <motion.button
                 whileTap={{ scale: 0.95 }}
