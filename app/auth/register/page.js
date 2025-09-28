@@ -102,6 +102,7 @@ export default function RegisterPage() {
           email: formData.email,
           first_name: formData.firstName,
           last_name: formData.lastName,
+          role: "customer",
           full_name: `${formData.firstName} ${formData.lastName}`,
           created_at: new Date().toISOString(),
         });

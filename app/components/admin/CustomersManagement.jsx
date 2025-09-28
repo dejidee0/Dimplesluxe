@@ -312,16 +312,11 @@ const CustomersManagement = ({ loading, customers, stats }) => {
 
           <div className="flex items-center space-x-2">
             <button
+              className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2"
               onClick={handleExportCustomers}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
             >
               <Download className="w-4 h-4" />
               <span>Export</span>
-            </button>
-
-            <button className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2">
-              <Plus className="w-4 h-4" />
-              <span>Add Customer</span>
             </button>
           </div>
         </div>

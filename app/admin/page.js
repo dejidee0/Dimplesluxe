@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Bell, X, Camera } from "lucide-react";
+import { Menu, Bell, X } from "lucide-react";
 
 // Components
 import Navbar from "../components/Navbar";
@@ -14,6 +14,7 @@ import OrdersManagement from "../components/admin/OrdersManagement";
 import ProductsManagement from "../components/admin/ProductsManagement";
 import CustomersManagement from "../components/admin/CustomersManagement";
 import NotificationsDropdown from "../components/admin/NotificationsDropdown";
+import NotAuthorized from "../components/NotAuthorized";
 
 // Hooks & Utils
 import { useAuthStore } from "../../lib/store";
@@ -22,15 +23,22 @@ import { supabase } from "../../lib/supabase";
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const {
+    user,
+    loading: authLoading,
+    initialized,
+    initialize,
+  } = useAuthStore();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [authChecked, setAuthChecked] = useState(false);
+  const initializeCalledRef = useRef(false);
 
   // Custom hook for admin data management
   const {
-    loading,
+    loading: dataLoading,
     stats,
     orders,
     products,
@@ -43,18 +51,52 @@ export default function AdminPage() {
     fetchDashboardData,
   } = useAdminData();
 
+  // Initialize auth only once on mount
   useEffect(() => {
-    fetchDashboardData();
-    fetchCategories();
-    console.log("User data:", user);
-  }, []);
+    if (!initialized && !initializeCalledRef.current) {
+      initializeCalledRef.current = true;
+      initialize();
+    }
+  }, [initialized, initialize]);
 
-  const tabs = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "orders", label: "Orders" },
-    { id: "products", label: "Products" },
-    { id: "customers", label: "Customers" },
-  ];
+  // Handle authentication and authorization
+  useEffect(() => {
+    if (initialized) {
+      setAuthChecked(true);
+
+      if (!authLoading) {
+        if (!user) {
+          // No user logged in, redirect to login
+          router.replace("/auth/login");
+        } else if (user.role !== "admin") {
+          // User logged in but not admin, will show NotAuthorized
+        } else {
+          // User is admin, fetch data
+          fetchDashboardData();
+          fetchCategories();
+        }
+      }
+    }
+  }, [user, authLoading, initialized, router]);
+
+  // Handle page visibility changes to prevent re-initialization
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Don't re-initialize when page becomes visible again
+      if (document.visibilityState === "visible" && initialized) {
+        // Just refresh data if user is admin
+        if (user && user.role === "admin") {
+          fetchDashboardData();
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [initialized, user, fetchDashboardData]);
 
   const fetchCategories = async () => {
     try {
@@ -71,6 +113,47 @@ export default function AdminPage() {
       setCategories([]);
     }
   };
+
+  // Show loading state only during initial auth check
+  if (!authChecked || (!initialized && !authLoading)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show NotAuthorized if user exists but is not admin
+  if (user && user.role !== "admin") {
+    return <NotAuthorized />;
+  }
+
+  // If no user after initialization, redirect is handled above
+  if (!user && !authLoading) {
+    return null;
+  }
+
+  // Still loading user data
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const tabs = [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "orders", label: "Orders" },
+    { id: "products", label: "Products" },
+    { id: "customers", label: "Customers" },
+  ];
 
   const handleAddProduct = async (product) => {
     try {
@@ -120,7 +203,7 @@ export default function AdminPage() {
       case "dashboard":
         return (
           <DashboardOverview
-            loading={loading}
+            loading={dataLoading}
             stats={stats}
             orders={orders}
             products={products}
@@ -129,7 +212,7 @@ export default function AdminPage() {
       case "orders":
         return (
           <OrdersManagement
-            loading={loading}
+            loading={dataLoading}
             orders={filteredOrders}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -140,7 +223,7 @@ export default function AdminPage() {
       case "products":
         return (
           <ProductsManagement
-            loading={loading}
+            loading={dataLoading}
             products={products}
             categories={categories}
             supabase={supabase}
@@ -153,7 +236,7 @@ export default function AdminPage() {
       case "customers":
         return (
           <CustomersManagement
-            loading={loading}
+            loading={dataLoading}
             customers={customers}
             stats={stats}
           />
@@ -162,17 +245,6 @@ export default function AdminPage() {
         return null;
     }
   };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -183,7 +255,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <Menu className="w-6 h-6 text-gray-600" />
           </button>
@@ -196,7 +268,7 @@ export default function AdminPage() {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 rounded-lg hover:bg-gray-100 relative"
+              className="p-2 rounded-lg hover:bg-gray-100 relative transition-colors"
             >
               <Bell className="w-5 h-5 text-gray-600" />
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-pink-500 rounded-full"></span>
@@ -230,6 +302,7 @@ export default function AdminPage() {
                 initial={{ x: -300 }}
                 animate={{ x: 0 }}
                 exit={{ x: -300 }}
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
                 className="lg:hidden fixed left-0 top-0 bottom-0 w-64 z-50"
               >
                 <AdminSidebar

@@ -233,7 +233,7 @@ export default function AccountPage() {
   if (!user) {
     return null;
   }
-
+  console.log(user);
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
