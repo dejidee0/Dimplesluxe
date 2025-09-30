@@ -250,7 +250,7 @@ export default function Navbar() {
                     D
                   </span>
                 </motion.div>
-                <span className="font-bold text-lg sm:text-xl md:text-2xl lg:text-3xl bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent whitespace-nowrap">
+                <span className="font-bold text-lg sm:text-xl md:text-2xl  font-great-vibes lg:text-3xl bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent whitespace-nowrap">
                   Dimplesluxe
                 </span>
               </Link>
