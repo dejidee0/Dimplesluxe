@@ -1,8 +1,10 @@
 // app/layout.js (Updated Root Layout)
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter, Playfair_Display, Great_Vibes } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import AuthProvider from "./components/providers/AuthProvider";
+
+// Configure Great Vibes
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,6 +17,11 @@ const playfair = Playfair_Display({
   variable: "--font-playfair",
   display: "swap",
 });
+const greatVibes = Great_Vibes({
+  subsets: ["latin"],
+  weight: "400", // Great Vibes has only one weight
+  display: "swap", // Prevents layout shift
+});
 
 export const metadata = {
   title: "Dimplesluxe - Premium Human Hair",
@@ -26,7 +33,10 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${playfair.variable} ${greatVibes.variable}`}
+    >
       <body className={`${inter.className} antialiased`}>
         <AuthProvider>
           {children}

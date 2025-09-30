@@ -224,11 +224,11 @@ export default function Navbar() {
                   whileTap={{ scale: 0.95 }}
                   className="w-8 h-8 sm:w-10 md:w-12 lg:w-10 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 flex items-center justify-center shadow-lg"
                 >
-                  <span className="text-white font-bold text-lg sm:text-xl md:text-2xl lg:text-xl">
+                  <span className="text-white font-bold font-great-vibes text-lg sm:text-xl md:text-2xl lg:text-xl">
                     D
                   </span>
                 </motion.div>
-                <span className="font-bold text-lg sm:text-xl md:text-2xl lg:text-xl bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent whitespace-nowrap">
+                <span className="font-bold text-lg sm:text-xl md:text-2xl font-great-vibes lg:text-xl bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent whitespace-nowrap">
                   Dimplesluxe
                 </span>
               </Link>

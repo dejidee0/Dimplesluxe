@@ -251,7 +251,6 @@ export default function CheckoutPage() {
       throw error;
     }
   };
-
   const handlePayment = async () => {
     if (!validateStep(4)) return;
     setLoading(true);
@@ -278,7 +277,9 @@ export default function CheckoutPage() {
         shippingMethod: formData.shippingMethod,
       };
 
+      // Create Stripe checkout session
       await createStripeCheckoutSession(paymentData);
+
       clearCart();
       toast.success("Redirecting to payment...");
     } catch (error) {
@@ -288,7 +289,6 @@ export default function CheckoutPage() {
       setLoading(false);
     }
   };
-
   const steps = [
     {
       number: 1,

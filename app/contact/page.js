@@ -2,15 +2,7 @@
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import {
-  Mail,
-  Phone,
-  MapPin,
-  Clock,
-  Send,
-  MessageCircle,
-  HelpCircle,
-} from "lucide-react";
+import { Mail, Phone, MapPin, Clock, Send, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 
@@ -31,12 +23,38 @@ export default function ContactPage() {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: "dimplesluxe@gmail.com", // Your support email
+          subject: `Contact Form Submission: ${formData.subject}`,
+          html: `
+            <h2>New Contact Form Submission</h2>
+            <p><strong>Name:</strong> ${formData.name}</p>
+            <p><strong>Email:</strong> ${formData.email}</p>
+            <p><strong>Subject:</strong> ${formData.subject}</p>
+            <p><strong>Message:</strong> ${formData.message}</p>
+            <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
+          `,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+
       toast.success("Message sent successfully! We'll get back to you soon.");
       setFormData({ name: "", email: "", subject: "", message: "" });
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message. Please try again later.");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const faqs = [
@@ -194,7 +212,6 @@ export default function ContactPage() {
                     {loading && (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     )}
-
                     <Send className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span className="text-sm sm:text-base">
                       {loading ? "Sending..." : "Send Message"}
@@ -216,8 +233,8 @@ export default function ContactPage() {
                   Contact Information
                 </h2>
                 <p className="text-gray-600 mb-6 sm:mb-8 text-sm sm:text-base">
-                  We're here to help! Reach out through any of these channels
-                  and we'll get back to you as soon as possible.
+                  We're here to help! Reach out via email or phone, and we'll
+                  get back to you as soon as possible.
                 </p>
               </div>
 
@@ -235,6 +252,23 @@ export default function ContactPage() {
                     </p>
                     <p className="text-xs sm:text-sm text-gray-500">
                       We respond within 24 hours
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3 sm:space-x-4 p-4 sm:p-6 bg-white rounded-2xl shadow-lg">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">
+                      Business Hours
+                    </h3>
+                    <p className="text-gray-600 mb-1 sm:mb-2 text-sm sm:text-base">
+                      Monday - Friday: 9AM - 6PM GMT
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-500">
+                      Closed on weekends and public holidays
                     </p>
                   </div>
                 </div>

@@ -34,7 +34,7 @@ export default function Footer() {
               <div className="w-8 h-8 rounded-full luxury-gradient flex items-center justify-center shadow-lg">
                 <span className="text-white font-playfair font-bold">D</span>
               </div>
-              <span className="font-playfair text-xl font-bold text-white">
+              <span className=" text-xl font-great-vibes font-bold text-white">
                 Dimplesluxe
               </span>
             </div>

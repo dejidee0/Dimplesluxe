@@ -143,6 +143,85 @@ export async function POST(request) {
           processed_at: new Date().toISOString(),
         });
 
+        // Fetch order details for email
+        const { data: orderDetails } = await supabase
+          .from("orders")
+          .select("shipping_address, same_as_billing, billing_address")
+          .eq("order_number", session.metadata.orderNumber)
+          .single();
+
+        const { data: items } = await supabase
+          .from("order_items")
+          .select("products(name, price), quantity")
+          .eq("order_id", session.metadata.orderId);
+
+        // Send email notification
+        const emailResponse = await fetch("/api/send-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to: session.customer_email,
+            subject: `Order Confirmation - ${session.metadata.orderNumber}`,
+            html: `
+              <h2>Thank You for Your Order!</h2>
+              <p>Dear ${session.metadata.customerName},</p>
+              <p>Your payment for order <strong>#${
+                session.metadata.orderNumber
+              }</strong> has been successfully processed.</p>
+              <h3>Order Details:</h3>
+              <ul>
+                ${items
+                  .map(
+                    (item) => `
+                      <li>
+                        ${item.products.name} (${
+                      item.quantity
+                    }x) - ${formatPrice(
+                      item.products.price * item.quantity,
+                      session.currency.toUpperCase(),
+                      1
+                    )}
+                      </li>
+                    `
+                  )
+                  .join("")}
+              </ul>
+              <p><strong>Subtotal:</strong> ${formatPrice(
+                session.amount_subtotal / 100,
+                session.currency.toUpperCase(),
+                1
+              )}</p>
+              <p><strong>Shipping:</strong> ${
+                session.shipping_cost?.amount_total === 0
+                  ? "Free"
+                  : formatPrice(
+                      session.shipping_cost?.amount_total / 100,
+                      session.currency.toUpperCase(),
+                      1
+                    )
+              }</p>
+              <p><strong>Total:</strong> ${formatPrice(
+                session.amount_total / 100,
+                session.currency.toUpperCase(),
+                1
+              )}</p>
+              <p><strong>Shipping Address:</strong> ${
+                orderDetails.same_as_billing
+                  ? `${orderDetails.billing_address.line1}, ${orderDetails.billing_address.city}, ${orderDetails.billing_address.postal_code}`
+                  : `${orderDetails.shipping_address.line1}, ${orderDetails.shipping_address.city}, ${orderDetails.shipping_address.postal_code}`
+              }</p>
+              <p>We’ll notify you once your order has shipped. Thank you for shopping with us!</p>
+              <p>Best regards,<br>Dimplesluxe</p>
+            `,
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          throw new Error("Failed to send confirmation email");
+        }
+
         console.log(
           `Payment successful for order ${session.metadata.orderNumber} using ${methodType}`
         );

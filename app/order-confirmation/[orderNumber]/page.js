@@ -4,20 +4,12 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
-import {
-  CheckCircle,
-  Package,
-  Truck,
-  MessageCircle,
-  Download,
-  Calendar,
-  MapPin,
-} from "lucide-react";
+import { CheckCircle, Truck, Download, Calendar, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "../../../lib/supabase";
 import { formatPrice } from "../../../lib/currency";
-import { redirectToWhatsApp } from "../../../lib/whatsapp";
 import toast from "react-hot-toast";
+import { jsPDF } from "jspdf";
 
 export default function OrderConfirmationPage() {
   const params = useParams();
@@ -44,10 +36,10 @@ export default function OrderConfirmationPage() {
 
       if (orderError) throw orderError;
 
-      // Fetch order items
+      // Fetch order items for receipt
       const { data: itemsData, error: itemsError } = await supabase
         .from("order_items")
-        .select("*")
+        .select("products(name, price), quantity, total_price")
         .eq("order_id", orderData.id);
 
       if (itemsError) throw itemsError;
@@ -62,28 +54,141 @@ export default function OrderConfirmationPage() {
     }
   };
 
-  const handleWhatsAppContact = () => {
-    if (!order) return;
+  const handleDownloadReceipt = () => {
+    try {
+      // Create a new jsPDF instance
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
 
-    const orderDetails = {
-      orderNumber: order.order_number,
-      customerName: order.customer_name,
-      customerEmail: order.customer_email,
-      customerPhone: order.customer_phone,
-      address: order.shipping_address_line1,
-      city: order.shipping_city,
-      postcode: order.shipping_postcode,
-      country: order.shipping_country,
-      items: orderItems.map((item) => ({
-        name: item.product_name,
-        quantity: item.quantity,
-        price: formatPrice(item.total_price, order.currency),
-      })),
-      total: formatPrice(order.total, order.currency),
-      paymentMethod: "Card Payment",
-    };
+      // Set font and styles
+      doc.setFont("Helvetica", "normal");
+      doc.setFontSize(12);
 
-    redirectToWhatsApp(orderDetails);
+      // Header
+      doc.setFontSize(18);
+      doc.text("Dimplesluxe Order Receipt", 20, 20);
+      doc.setFontSize(12);
+      doc.text(`Order Number: #${order.order_number}`, 20, 30);
+      doc.text(
+        `Order Date: ${new Date(order.created_at).toLocaleDateString()}`,
+        20,
+        36
+      );
+
+      // Customer Information
+      doc.setFontSize(14);
+      doc.text("Customer Information", 20, 50);
+      doc.setFontSize(12);
+      doc.text(`Name: ${order.customer_name}`, 20, 58);
+      doc.text(`Email: ${order.customer_email}`, 20, 64);
+      if (order.customer_phone) {
+        doc.text(`Phone: ${order.customer_phone}`, 20, 70);
+      }
+
+      // Shipping Information
+      doc.setFontSize(14);
+      doc.text("Shipping Information", 20, 80);
+      doc.setFontSize(12);
+      doc.text(`Address: ${order.shipping_address_line1}`, 20, 88);
+      if (order.shipping_address_line2) {
+        doc.text(` ${order.shipping_address_line2}`, 20, 94);
+      }
+      doc.text(
+        `City: ${order.shipping_city}, ${order.shipping_postcode}`,
+        20,
+        100
+      );
+      doc.text(`Country: ${order.shipping_country}`, 20, 106);
+      doc.text(`Shipping Method: ${order.shipping_method} Delivery`, 20, 112);
+
+      // Order Items
+      doc.setFontSize(14);
+      doc.text("Order Items", 20, 122);
+      doc.setFontSize(12);
+      let yPosition = 130;
+      orderItems.forEach((item, index) => {
+        doc.text(
+          `${index + 1}. ${item.products.name} (Qty: ${item.quantity})`,
+          20,
+          yPosition
+        );
+        doc.text(
+          `${formatPrice(item.total_price, order.currency)}`,
+          160,
+          yPosition,
+          { align: "right" }
+        );
+        yPosition += 8;
+      });
+
+      // Order Summary
+      yPosition += 5;
+      doc.setFontSize(14);
+      doc.text("Order Summary", 20, yPosition);
+      doc.setFontSize(12);
+      yPosition += 8;
+      doc.text(
+        `Subtotal: ${formatPrice(order.subtotal, order.currency)}`,
+        160,
+        yPosition,
+        {
+          align: "right",
+        }
+      );
+      yPosition += 6;
+      doc.text(
+        `Shipping: ${
+          order.shipping_cost === 0
+            ? "Free"
+            : formatPrice(order.shipping_cost, order.currency)
+        }`,
+        160,
+        yPosition,
+        { align: "right" }
+      );
+      yPosition += 6;
+      if (order.tax > 0) {
+        doc.text(
+          `Tax: ${formatPrice(order.tax, order.currency)}`,
+          160,
+          yPosition,
+          {
+            align: "right",
+          }
+        );
+        yPosition += 6;
+      }
+      yPosition += 5;
+      doc.setFontSize(14);
+      doc.text(
+        `Total: ${formatPrice(order.total, order.currency)}`,
+        160,
+        yPosition,
+        {
+          align: "right",
+        }
+      );
+
+      // Footer
+      yPosition += 15;
+      doc.setFontSize(10);
+      doc.text("Thank you for shopping with Dimplesluxe!", 20, yPosition);
+      doc.text(
+        "Contact: dimplesluxe@gmail.com | Mon-Fri: 9AM-6PM GMT",
+        20,
+        yPosition + 6
+      );
+
+      // Save the PDF
+      doc.save(`Dimplesluxe_Receipt_${order.order_number}.pdf`);
+      toast.success("Receipt downloaded successfully!");
+    } catch (error) {
+      console.error("Error generating receipt:", error);
+      toast.error("Failed to download receipt. Please try again.");
+    }
   };
 
   if (loading) {
@@ -142,8 +247,8 @@ export default function OrderConfirmationPage() {
               Order Confirmed!
             </h1>
             <p className="text-lg sm:text-xl text-gray-600 mb-6">
-              Thank you for your purchase. Your order has been successfully
-              placed.
+              Your payment was successful! You will receive an email
+              confirmation with your order details.
             </p>
             <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 inline-block">
               <div className="text-sm text-gray-600 mb-1">Order Number</div>
@@ -156,46 +261,6 @@ export default function OrderConfirmationPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Order Details */}
             <div className="lg:col-span-2 space-y-6 sm:space-y-8">
-              {/* Order Items */}
-              <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
-                <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4 sm:mb-6">
-                  Order Items
-                </h2>
-                <div className="space-y-4">
-                  {orderItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 border border-gray-200 rounded-xl"
-                    >
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-lg flex-shrink-0"></div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
-                          {item.product_name}
-                        </h3>
-                        <div className="text-xs sm:text-sm text-gray-600 space-y-1">
-                          {item.selected_length && (
-                            <p>Length: {item.selected_length}"</p>
-                          )}
-
-                          {item.selected_color && (
-                            <p>Color: {item.selected_color}</p>
-                          )}
-                          <p>Quantity: {item.quantity}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-gray-900 text-sm sm:text-base">
-                          {formatPrice(item.total_price, order.currency)}
-                        </div>
-                        <div className="text-xs sm:text-sm text-gray-600">
-                          {formatPrice(item.unit_price, order.currency)} each
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Shipping Information */}
               <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
                 <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4 sm:mb-6">
@@ -213,7 +278,6 @@ export default function OrderConfirmationPage() {
                       {order.shipping_address_line2 && (
                         <p>{order.shipping_address_line2}</p>
                       )}
-
                       <p>
                         {order.shipping_city}, {order.shipping_postcode}
                       </p>
@@ -265,7 +329,7 @@ export default function OrderConfirmationPage() {
 
                   <div className="flex items-center space-x-4">
                     <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                      <Package className="w-5 h-5 text-gray-600" />
+                      <Truck className="w-5 h-5 text-gray-600" />
                     </div>
                     <div>
                       <div className="font-semibold text-gray-600">
@@ -333,18 +397,13 @@ export default function OrderConfirmationPage() {
 
                 {/* Action Buttons */}
                 <div className="space-y-3">
-                  <button
-                    onClick={handleWhatsAppContact}
-                    className="w-full bg-green-500 text-white font-semibold px-4 py-3 rounded-xl hover:bg-green-600 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
+                  {/* <button
+                    onClick={handleDownloadReceipt}
+                    className="w-full btn-secondary flex items-center justify-center space-x-2 text-sm sm:text-base"
                   >
-                    <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>Contact via WhatsApp</span>
-                  </button>
-
-                  <button className="w-full btn-secondary flex items-center justify-center space-x-2 text-sm sm:text-base">
                     <Download className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span>Download Receipt</span>
-                  </button>
+                  </button> */}
 
                   <Link
                     href="/products"
@@ -361,7 +420,6 @@ export default function OrderConfirmationPage() {
                   </h3>
                   <div className="text-xs sm:text-sm text-gray-600 space-y-1">
                     <p>Email: dimplesluxe@gmail.com</p>
-
                     <p>Mon-Fri: 9AM-6PM GMT</p>
                   </div>
                 </div>
