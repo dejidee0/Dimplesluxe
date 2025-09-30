@@ -168,7 +168,7 @@ export default function Navbar() {
                 <span className="hidden sm:inline">
                   🚚 Free UK delivery on orders over £50
                 </span>
-                <span className="sm:hidden">🚚 Free delivery over £50</span>
+                <span className="sm:hidden">🚚 Free delivery over £150</span>
               </motion.p>
             </div>
           </div>

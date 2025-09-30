@@ -84,11 +84,11 @@ export default function Hero() {
                   ))}
                 </div>
                 <span className="text-sm sm:text-base text-gray-600">
-                  4.98 (500+ reviews)
+                  4.98 (50+ reviews)
                 </span>
               </div>
               <div className="text-sm sm:text-base text-gray-600">
-                <span className="font-semibold text-primary-600">2,000+</span>{" "}
+                <span className="font-semibold text-primary-600">100+</span>{" "}
                 Happy Customers
               </div>
             </motion.div>
