@@ -68,6 +68,8 @@ export default function ProductCard({ product }) {
     }
   };
 
+  // Use product.image_url from the schema, with a fallback image
+
   return (
     <motion.div
       whileHover={{ y: -5 }}
@@ -79,13 +81,13 @@ export default function ProductCard({ product }) {
         <div className="relative h-48 sm:h-64 md:h-72 lg:h-80 overflow-hidden">
           <Image
             src={
-              product.images?.[0] ||
-              "https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800"
+              product.image_url ||
+              "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZHVjdHxlbnwwfHwwfHx8MA%3D%3D"
             }
             alt={product.name}
-            priority={product.is_featured}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-110"
+            priority={product.is_featured}
           />
           {/* Overlay Actions */}
           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
@@ -116,16 +118,14 @@ export default function ProductCard({ product }) {
               </div>
             </div>
           </div>
-
           {/* Sale Badge */}
-          {product.sale && (
+          {product.is_sale && (
             <div className="absolute top-2 sm:top-4 left-2 sm:left-4 bg-red-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
               Sale
             </div>
           )}
-
           {/* New Badge */}
-          {product.isNew && (
+          {product.is_new && (
             <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-green-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
               New
             </div>
@@ -147,7 +147,7 @@ export default function ProductCard({ product }) {
               />
             ))}
             <span className="text-xs sm:text-sm text-gray-600 ml-2">
-              ({product.reviews || 0} reviews)
+              ({product.review_count || 0} reviews)
             </span>
           </div>
 
@@ -186,9 +186,9 @@ export default function ProductCard({ product }) {
               <span className="text-lg sm:text-2xl font-bold text-gray-900">
                 {formatPrice(product.price, currency, exchangeRate)}
               </span>
-              {product.originalPrice && (
+              {product.original_price && (
                 <span className="text-sm sm:text-lg text-gray-500 line-through">
-                  {formatPrice(product.originalPrice, currency, exchangeRate)}
+                  {formatPrice(product.original_price, currency, exchangeRate)}
                 </span>
               )}
             </div>

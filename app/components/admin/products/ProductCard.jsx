@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Package, Star, Eye, Edit, Trash2 } from "lucide-react";
 import { formatPrice, getStockStatus } from "../../../../lib/productUtils";
@@ -6,6 +7,11 @@ import { formatPrice, getStockStatus } from "../../../../lib/productUtils";
 const ProductCard = ({ product, categories, onView, onEdit, onDelete }) => {
   const stockStatus = getStockStatus(product.stock || 0);
   const category = categories.find((cat) => cat.id === product.category_id);
+  console.log("ProductCard image_url:", product.image_url);
+
+  // Define fallback image URL
+  const fallbackImageUrl =
+    "https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800";
 
   return (
     <motion.div
@@ -16,23 +22,22 @@ const ProductCard = ({ product, categories, onView, onEdit, onDelete }) => {
     >
       <div className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100">
         {product.image_url ? (
-          <img
+          <Image
             src={product.image_url}
             alt={product.name}
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
+            priority={product.is_featured}
             onError={(e) => {
-              e.target.style.display = "none";
-              e.target.nextSibling.style.display = "flex";
+              console.error(`Failed to load image: ${product.image_url}`);
+              e.target.src = fallbackImageUrl;
             }}
           />
-        ) : null}
-        <div
-          className={`w-full h-full flex items-center justify-center ${
-            product.image_url ? "hidden" : "flex"
-          }`}
-        >
-          <Package className="w-12 h-12 text-gray-400" />
-        </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Package className="w-12 h-12 text-gray-400" />
+          </div>
+        )}
 
         <div className="absolute top-2 right-2">
           <span

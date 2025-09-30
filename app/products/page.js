@@ -14,7 +14,6 @@ export default function ProductsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [products, setProducts] = useState([]);
-
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("grid");
@@ -129,8 +128,7 @@ export default function ProductsPage() {
         .select(
           `
           *,
-          category:categories!products_category_id_fkey(name, slug),
-          product_images(image_url, alt_text, is_primary)
+          category:categories!products_category_id_fkey(name, slug)
         `
         )
         .eq("is_active", true);
@@ -222,10 +220,11 @@ export default function ProductsPage() {
       const { data, error } = await query;
       if (error) throw error;
 
+      console.log("Raw product data:", data);
       const newProducts = data || [];
       console.log(
-        "Fetched products:",
-        newProducts.map((p) => p.id)
+        "Fetched products image_urls:",
+        newProducts.map((p) => p.image_url)
       );
 
       const uniqueProducts = reset
@@ -234,6 +233,10 @@ export default function ProductsPage() {
             (product, index, self) =>
               index === self.findIndex((p) => p.id === product.id)
           );
+      console.log(
+        "Unique products image_urls:",
+        uniqueProducts.map((p) => p.image_url)
+      );
 
       setProducts(uniqueProducts);
       setHasMore(newProducts.length === limit);
@@ -543,12 +546,11 @@ export default function ProductsPage() {
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}
-                    product={{
-                      ...product,
-                      images:
-                        product.product_images?.map((img) => img.image_url) ||
-                        [],
-                    }}
+                    product={product}
+                    categories={categories}
+                    onView={() => console.log("View", product)}
+                    onEdit={() => console.log("Edit", product)}
+                    onDelete={() => console.log("Delete", product)}
                   />
                 ))}
               </div>

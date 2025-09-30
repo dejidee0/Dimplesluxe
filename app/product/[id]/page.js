@@ -105,7 +105,7 @@ export default function ProductDetailPage() {
           `
           *,
           category:categories!products_category_id_fkey(name, slug),
-          product_images(image_url, alt_text, is_primary)
+          
         `
         )
         .eq("is_active", true)
@@ -293,7 +293,7 @@ export default function ProductDetailPage() {
                 >
                   <Image
                     src={
-                      product.product_images?.[currentImageIndex]?.image_url ||
+                      product.image_url ||
                       "https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800"
                     }
                     alt={product.name}
