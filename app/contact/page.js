@@ -231,7 +231,7 @@ export default function ContactPage() {
                       Email Support
                     </h3>
                     <p className="text-gray-600 mb-1 sm:mb-2 text-sm sm:text-base">
-                      hello@dimplesluxe.com
+                      dimplesluxe@gmail.com
                     </p>
                     <p className="text-xs sm:text-sm text-gray-500">
                       We respond within 24 hours

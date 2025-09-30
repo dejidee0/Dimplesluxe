@@ -360,7 +360,7 @@ export default function OrderConfirmationPage() {
                     Need Help?
                   </h3>
                   <div className="text-xs sm:text-sm text-gray-600 space-y-1">
-                    <p>Email: hello@dimplesluxe.com</p>
+                    <p>Email: dimplesluxe@gmail.com</p>
 
                     <p>Mon-Fri: 9AM-6PM GMT</p>
                   </div>

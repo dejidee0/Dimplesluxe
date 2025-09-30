@@ -131,13 +131,13 @@ export default function Footer() {
             </h3>
             <div className="space-y-4 mb-6">
               <a
-                href="mailto:hello@dimplesluxe.com"
+                href="mailto:dimplesluxe@gmail.com"
                 className="group flex items-center space-x-3 text-gray-400 hover:text-white transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800/50"
               >
                 <div className="p-2 bg-primary-500/10 rounded-lg group-hover:bg-primary-500/20 transition-colors">
                   <Mail className="w-4 h-4 text-primary-400" />
                 </div>
-                <span className="text-sm">hello@dimplesluxe.com</span>
+                <span className="text-sm">dimplesluxe@gmail.com</span>
               </a>
             </div>
 
