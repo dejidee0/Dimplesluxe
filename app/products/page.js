@@ -128,7 +128,14 @@ export default function ProductsPage() {
         .select(
           `
           *,
-          category:categories!products_category_id_fkey(name, slug)
+          category:categories!products_category_id_fkey(name, slug),    images:product_images(
+      id,
+      image_url,
+      alt_text,
+      is_primary,
+      sort_order,
+      file_size
+    )
         `
         )
         .eq("is_active", true);

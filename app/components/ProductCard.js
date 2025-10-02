@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, ShoppingBag, Eye, Star } from "lucide-react";
+import { Heart, ShoppingBag, Eye, Star, ImageIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCartStore, useWishlistStore, useAuthStore } from "../../lib/store";
 import { formatPrice } from "../../lib/currency";
@@ -20,12 +20,30 @@ export default function ProductCard({ product }) {
     setWishlist,
   } = useWishlistStore();
   const [loading, setLoading] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     // Optionally, fetch wishlist from Supabase on mount if user is logged in
     // and setWishlist if not already loaded
     // This is best handled globally on login, but can be here for SSR/CSR sync
   }, [user]);
+
+  // Get primary image - supports both new multi-image and legacy single image
+  const getPrimaryImage = () => {
+    // First, try to get primary image from images array
+    if (product.images && product.images.length > 0) {
+      const primaryImage = product.images.find((img) => img.is_primary);
+      return primaryImage?.image_url || product.images[0]?.image_url;
+    }
+
+    // Fallback to legacy image_url field
+    if (product.image_url) {
+      return product.image_url;
+    }
+
+    // Final fallback to placeholder
+    return "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZHVjdHxlbnwwfHwwfHx8MA%3D%3D";
+  };
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -68,7 +86,8 @@ export default function ProductCard({ product }) {
     }
   };
 
-  // Use product.image_url from the schema, with a fallback image
+  const primaryImageUrl = getPrimaryImage();
+  const imageCount = product.images?.length || 0;
 
   return (
     <motion.div
@@ -80,15 +99,21 @@ export default function ProductCard({ product }) {
         {/* Image Container */}
         <div className="relative h-48 sm:h-64 md:h-72 lg:h-80 overflow-hidden">
           <Image
-            src={
-              product.image_url ||
-              "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZHVjdHxlbnwwfHwwfHx8MA%3D%3D"
-            }
+            src={primaryImageUrl}
             alt={product.name}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-110"
             priority={product.is_featured}
           />
+
+          {/* Image Count Badge */}
+          {imageCount > 1 && (
+            <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
+              <ImageIcon className="w-3 h-3" />
+              <span>{imageCount}</span>
+            </div>
+          )}
+
           {/* Overlay Actions */}
           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
             <div className="flex space-x-2 sm:space-x-3">

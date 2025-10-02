@@ -1,25 +1,47 @@
 // components/products/ProductViewModal.jsx
-import React from "react";
-import { Package, Star, Edit } from "lucide-react";
+import React, { useState } from "react";
+import { Package, Star, Edit, ChevronLeft, ChevronRight } from "lucide-react";
 import ProductModal from "./ProductModal";
 import { formatPrice, getStockStatus } from "../../../../lib/productUtils";
 
 const ProductViewModal = ({ isOpen, onClose, product, categories, onEdit }) => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
   if (!product) return null;
 
   const stockStatus = getStockStatus(product.stock || 0);
   const category = categories.find((cat) => cat.id === product.category_id);
 
+  // Get images array - handle both new multi-image structure and old single image
+  const images =
+    product.images && product.images.length > 0
+      ? product.images
+      : product.image_url
+      ? [{ id: "legacy", image_url: product.image_url, is_primary: true }]
+      : [];
+
+  const currentImage = images[currentImageIndex];
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
   return (
     <ProductModal isOpen={isOpen} onClose={onClose} title="Product Details">
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Image Gallery */}
           <div className="space-y-4">
-            <div className="w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden">
-              {product.image_url ? (
+            {/* Main Image Display */}
+            <div className="relative w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden group">
+              {currentImage ? (
                 <img
-                  src={product.image_url}
-                  alt={product.name}
+                  src={currentImage.image_url || currentImage.url}
+                  alt={currentImage.alt_text || product.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.target.style.display = "none";
@@ -29,12 +51,78 @@ const ProductViewModal = ({ isOpen, onClose, product, categories, onEdit }) => {
               ) : null}
               <div
                 className={`w-full h-full flex items-center justify-center ${
-                  product.image_url ? "hidden" : "flex"
+                  currentImage ? "hidden" : "flex"
                 }`}
               >
                 <Package className="w-16 h-16 text-gray-400" />
               </div>
+
+              {/* Navigation Arrows - only show if multiple images */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrevImage}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-800" />
+                  </button>
+                  <button
+                    onClick={handleNextImage}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="w-5 h-5 text-gray-800" />
+                  </button>
+
+                  {/* Image Counter */}
+                  <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                    {currentImageIndex + 1} / {images.length}
+                  </div>
+                </>
+              )}
             </div>
+
+            {/* Thumbnail Gallery */}
+            {images.length > 1 && (
+              <div className="grid grid-cols-4 gap-2">
+                {images.map((image, index) => (
+                  <button
+                    key={image.id || index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      index === currentImageIndex
+                        ? "border-pink-500 ring-2 ring-pink-200"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <img
+                      src={image.image_url || image.url}
+                      alt={`${product.name} - ${index + 1}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "flex";
+                      }}
+                    />
+                    <div
+                      className={`w-full h-full flex items-center justify-center bg-gray-100 ${
+                        image.image_url || image.url ? "hidden" : "flex"
+                      }`}
+                    >
+                      <Package className="w-6 h-6 text-gray-400" />
+                    </div>
+                    {image.is_primary && (
+                      <div className="absolute top-1 right-1 bg-pink-500 text-white text-xs px-1 py-0.5 rounded flex items-center gap-1">
+                        <Star className="w-2 h-2 fill-current" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Status Badges */}
             <div className="flex flex-wrap gap-2">
               {product.is_active && (
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -59,6 +147,7 @@ const ProductViewModal = ({ isOpen, onClose, product, categories, onEdit }) => {
             </div>
           </div>
 
+          {/* Product Details */}
           <div className="space-y-4">
             <div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">

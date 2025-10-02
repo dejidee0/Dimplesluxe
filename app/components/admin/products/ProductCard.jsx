@@ -1,17 +1,38 @@
 import React from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Package, Star, Eye, Edit, Trash2 } from "lucide-react";
+import { Package, Star, Eye, Edit, Trash2, ImageIcon } from "lucide-react";
 import { formatPrice, getStockStatus } from "../../../../lib/productUtils";
 
 const ProductCard = ({ product, categories, onView, onEdit, onDelete }) => {
   const stockStatus = getStockStatus(product.stock || 0);
   const category = categories.find((cat) => cat.id === product.category_id);
-  console.log("ProductCard image_url:", product.image_url);
 
   // Define fallback image URL
   const fallbackImageUrl =
     "https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800";
+
+  // Get primary image - supports both new multi-image and legacy single image
+  const getPrimaryImage = () => {
+    // First, try to get primary image from images array
+    if (product.images && product.images.length > 0) {
+      const primaryImage = product.images.find((img) => img.is_primary);
+      return primaryImage?.image_url || product.images[0]?.image_url;
+    }
+
+    // Fallback to legacy image_url field
+    if (product.image_url) {
+      return product.image_url;
+    }
+
+    return null;
+  };
+
+  const primaryImageUrl = getPrimaryImage();
+  const imageCount = product.images?.length || 0;
+
+  console.log("ProductCard primary image:", primaryImageUrl);
+  console.log("ProductCard total images:", imageCount);
 
   return (
     <motion.div
@@ -21,15 +42,15 @@ const ProductCard = ({ product, categories, onView, onEdit, onDelete }) => {
       className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
     >
       <div className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100">
-        {product.image_url ? (
+        {primaryImageUrl ? (
           <Image
-            src={product.image_url}
+            src={primaryImageUrl}
             alt={product.name}
             fill
             className="object-cover"
             priority={product.is_featured}
             onError={(e) => {
-              console.error(`Failed to load image: ${product.image_url}`);
+              console.error(`Failed to load image: ${primaryImageUrl}`);
               e.target.src = fallbackImageUrl;
             }}
           />
@@ -39,6 +60,17 @@ const ProductCard = ({ product, categories, onView, onEdit, onDelete }) => {
           </div>
         )}
 
+        {/* Image Count Badge */}
+        {imageCount > 1 && (
+          <div className="absolute bottom-2 right-2">
+            <div className="flex items-center space-x-1 bg-black/70 text-white rounded-full px-2 py-1 text-xs shadow-sm">
+              <ImageIcon className="w-3 h-3" />
+              <span className="font-medium">{imageCount}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Stock Badge */}
         <div className="absolute top-2 right-2">
           <span
             className={`px-2 py-1 rounded-full text-xs font-medium text-white ${
@@ -53,6 +85,7 @@ const ProductCard = ({ product, categories, onView, onEdit, onDelete }) => {
           </span>
         </div>
 
+        {/* Rating Badge */}
         <div className="absolute bottom-2 left-2">
           <div className="flex items-center space-x-1 bg-white/90 rounded-full px-2 py-1 text-xs shadow-sm">
             <Star className="w-3 h-3 text-yellow-400 fill-current" />
@@ -60,6 +93,7 @@ const ProductCard = ({ product, categories, onView, onEdit, onDelete }) => {
           </div>
         </div>
 
+        {/* Status Badges */}
         <div className="absolute top-2 left-2 flex flex-col space-y-1">
           {product.is_featured && (
             <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">

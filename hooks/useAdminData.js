@@ -35,7 +35,19 @@ export function useAdminData() {
       // Fetch products
       const { data: productsData, error: productsError } = await supabase
         .from("products")
-        .select("*")
+        .select(
+          `
+      *,
+      images:product_images(
+        id,
+        image_url,
+        alt_text,
+        is_primary,
+        sort_order,
+        file_size
+      )
+    `
+        )
         .order("created_at", { ascending: false });
 
       if (productsError) {

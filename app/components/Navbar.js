@@ -166,7 +166,7 @@ export default function Navbar() {
                 className="text-sm font-medium"
               >
                 <span className="hidden sm:inline">
-                  🚚 Free UK delivery on orders over £50
+                  🚚 Free UK delivery on orders over £150
                 </span>
                 <span className="sm:hidden">🚚 Free delivery over £150</span>
               </motion.p>

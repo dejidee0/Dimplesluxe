@@ -66,7 +66,14 @@ export default function ProductDetailPage() {
           `
           *,
           category:categories!products_category_id_fkey(name, slug),
-          product_images(image_url, alt_text, is_primary, sort_order)
+          images:product_images(
+            id,
+            image_url,
+            alt_text,
+            is_primary,
+            sort_order,
+            file_size
+          )
         `
         )
         .eq("id", params.id)
@@ -76,8 +83,8 @@ export default function ProductDetailPage() {
       if (error) throw error;
 
       // Sort images by sort_order
-      if (product.product_images) {
-        product.product_images.sort((a, b) => a.sort_order - b.sort_order);
+      if (product.images) {
+        product.images.sort((a, b) => a.sort_order - b.sort_order);
       }
 
       setProduct(product);
@@ -105,14 +112,28 @@ export default function ProductDetailPage() {
           `
           *,
           category:categories!products_category_id_fkey(name, slug),
-          
+          images:product_images(
+            id,
+            image_url,
+            alt_text,
+            is_primary,
+            sort_order,
+            file_size
+          )
         `
         )
         .eq("is_active", true)
         .neq("id", params.id)
         .limit(4);
 
-      setRelatedProducts(data || []);
+      // Sort images for each product
+      const productsWithSortedImages = data?.map((product) => ({
+        ...product,
+        images:
+          product.images?.sort((a, b) => a.sort_order - b.sort_order) || [],
+      }));
+
+      setRelatedProducts(productsWithSortedImages || []);
     } catch (error) {
       console.error("Error fetching related products:", error);
     }
@@ -132,6 +153,18 @@ export default function ProductDetailPage() {
     } catch (error) {
       console.error("Error fetching reviews:", error);
     }
+  };
+
+  const getCurrentImage = () => {
+    if (product?.images && product.images.length > 0) {
+      return product.images[currentImageIndex]?.image_url;
+    }
+    // Fallback to legacy image_url
+    if (product?.image_url) {
+      return product.image_url;
+    }
+    // Final fallback
+    return "https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800";
   };
 
   const handleAddToCart = () => {
@@ -191,17 +224,17 @@ export default function ProductDetailPage() {
   };
 
   const nextImage = () => {
-    if (product?.product_images) {
+    if (product?.images && product.images.length > 0) {
       setCurrentImageIndex((prev) =>
-        prev === product.product_images.length - 1 ? 0 : prev + 1
+        prev === product.images.length - 1 ? 0 : prev + 1
       );
     }
   };
 
   const prevImage = () => {
-    if (product?.product_images) {
+    if (product?.images && product.images.length > 0) {
       setCurrentImageIndex((prev) =>
-        prev === 0 ? product.product_images.length - 1 : prev - 1
+        prev === 0 ? product.images.length - 1 : prev - 1
       );
     }
   };
@@ -292,11 +325,11 @@ export default function ProductDetailPage() {
                   className="relative w-full h-full"
                 >
                   <Image
-                    src={
-                      product.image_url ||
-                      "https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800"
+                    src={getCurrentImage()}
+                    alt={
+                      product.images?.[currentImageIndex]?.alt_text ||
+                      product.name
                     }
-                    alt={product.name}
                     fill
                     className="object-cover"
                   />
@@ -304,7 +337,7 @@ export default function ProductDetailPage() {
               </AnimatePresence>
 
               {/* Navigation Arrows */}
-              {product.product_images && product.product_images.length > 1 && (
+              {product.images && product.images.length > 1 && (
                 <>
                   <button
                     onClick={prevImage}
@@ -322,9 +355,9 @@ export default function ProductDetailPage() {
               )}
 
               {/* Image Indicators */}
-              {product.product_images && product.product_images.length > 1 && (
+              {product.images && product.images.length > 1 && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-                  {product.product_images.map((_, index) => (
+                  {product.images.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
@@ -338,11 +371,11 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Thumbnail Images */}
-            {product.product_images && product.product_images.length > 1 && (
+            {product.images && product.images.length > 1 && (
               <div className="grid grid-cols-4 gap-2 sm:gap-4">
-                {product.product_images.slice(0, 4).map((image, index) => (
+                {product.images.slice(0, 4).map((image, index) => (
                   <button
-                    key={index}
+                    key={image.id || index}
                     onClick={() => setCurrentImageIndex(index)}
                     className={`relative h-20 sm:h-24 rounded-lg overflow-hidden border-2 transition-all ${
                       index === currentImageIndex
@@ -352,7 +385,7 @@ export default function ProductDetailPage() {
                   >
                     <Image
                       src={image.image_url}
-                      alt={`${product.name} ${index + 1}`}
+                      alt={image.alt_text || `${product.name} ${index + 1}`}
                       fill
                       className="object-cover"
                     />
@@ -514,7 +547,7 @@ export default function ProductDetailPage() {
               <div className="flex items-center space-x-3">
                 <Truck className="w-5 h-5 text-primary-600" />
                 <span className="text-sm text-gray-700">
-                  Free UK delivery over £50
+                  Free UK delivery over £150
                 </span>
               </div>
               <div className="flex items-center space-x-3">
@@ -547,7 +580,6 @@ export default function ProductDetailPage() {
                 { id: "description", label: "Description" },
                 { id: "specifications", label: "Specifications" },
                 { id: "care", label: "Care Instructions" },
-                { id: "reviews", label: `Reviews (${reviews.length})` },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -725,16 +757,7 @@ export default function ProductDetailPage() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
               {relatedProducts.map((relatedProduct) => (
-                <ProductCard
-                  key={relatedProduct.id}
-                  product={{
-                    ...relatedProduct,
-                    images:
-                      relatedProduct.product_images?.map(
-                        (img) => img.image_url
-                      ) || [],
-                  }}
-                />
+                <ProductCard key={relatedProduct.id} product={relatedProduct} />
               ))}
             </div>
           </div>

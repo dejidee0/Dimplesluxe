@@ -119,7 +119,6 @@ export default function ContactPage() {
       <section className="py-12 sm:py-16 lg:py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-            {/* Contact Form */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -265,10 +264,7 @@ export default function ContactPage() {
                       Business Hours
                     </h3>
                     <p className="text-gray-600 mb-1 sm:mb-2 text-sm sm:text-base">
-                      Monday - Friday: 9AM - 6PM GMT
-                    </p>
-                    <p className="text-xs sm:text-sm text-gray-500">
-                      Closed on weekends and public holidays
+                      Monday - Sunday: 8AM - 8PM GMT
                     </p>
                   </div>
                 </div>

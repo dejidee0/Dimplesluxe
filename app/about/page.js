@@ -85,7 +85,7 @@ export default function AboutPage() {
               <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8 text-center">
                 <div>
                   <div className="text-2xl sm:text-3xl font-bold text-primary-600">
-                    2K+
+                    500+
                   </div>
                   <div className="text-sm sm:text-base text-gray-600">
                     Happy Customers

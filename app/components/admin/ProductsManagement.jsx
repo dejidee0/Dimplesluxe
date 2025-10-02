@@ -195,14 +195,16 @@ const ProductsManagement = ({
         <ProductForm
           formData={productForm.formData}
           errors={productForm.errors}
-          imagePreview={productForm.imagePreview}
+          images={productForm.images} // Changed from imagePreview
           isSubmitting={productForm.isSubmitting}
-          uploadingImage={productForm.uploadingImage}
+          uploadingImages={productForm.uploadingImages} // Changed from uploadingImage
           categories={categories}
           onInputChange={productForm.handleInputChange}
           onArrayInputChange={productForm.handleArrayInputChange}
-          onImageChange={productForm.handleImageChange}
-          onRemoveImage={productForm.removeImage}
+          onImagesChange={productForm.handleImagesChange} // Changed from onImageChange
+          onRemoveImage={productForm.handleRemoveImage} // Changed from removeImage
+          onSetPrimaryImage={productForm.handleSetPrimaryImage} // NEW
+          onReorderImages={productForm.handleReorderImages} // NEW
           onSubmit={(e) =>
             productForm.handleSubmit(
               e,

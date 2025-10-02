@@ -277,7 +277,76 @@ export default function CheckoutPage() {
         shippingMethod: formData.shippingMethod,
       };
 
-      // Create Stripe checkout session
+      // Send email notification before creating Stripe session
+      const emailResponse = await fetch("/api/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: formData.email,
+          subject: `Order Confirmation - ${order.order_number}`,
+          html: `
+          <h2>Thank You for Your Order!</h2>
+          <p>Dear ${formData.firstName},</p>
+          <p>Your order <strong>#${
+            order.order_number
+          }</strong> has been successfully received. </p>
+          <h3>Order Details:</h3>
+          <ul>
+            ${items
+              .map(
+                (item) => `
+                  <li>
+                    ${item.name} (${item.quantity}x) - ${formatPrice(
+                  item.price * item.quantity,
+                  currency,
+                  exchangeRate
+                )}
+                  </li>
+                `
+              )
+              .join("")}
+          </ul>
+          <p><strong>Subtotal:</strong> ${formatPrice(
+            subtotal,
+            currency,
+            exchangeRate
+          )}</p>
+          <p><strong>Shipping:</strong> ${
+            shippingCost === 0
+              ? "Free"
+              : formatPrice(shippingCost, currency, exchangeRate)
+          }</p>
+          <p><strong>Total:</strong> ${formatPrice(
+            total,
+            currency,
+            exchangeRate
+          )}</p>
+          <p><strong>Shipping Address:</strong> ${
+            formData.sameAsBilling
+              ? formData.billingAddress
+              : formData.shippingAddress
+          }, ${
+            formData.sameAsBilling
+              ? formData.billingCity
+              : formData.shippingCity
+          }, ${
+            formData.sameAsBilling
+              ? formData.billingPostcode
+              : formData.shippingPostcode
+          }</p>
+          <p>We’ll notify you once your order has shipped. Thank you for shopping with us!</p>
+          <p>Best regards,<br>Dimplesluxe</p>
+        `,
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        throw new Error("Failed to send confirmation email");
+      }
+
+      // Create Stripe checkout session after email is sent
       await createStripeCheckoutSession(paymentData);
 
       clearCart();
@@ -868,7 +937,7 @@ function ShippingStep({
                 <div className="text-base font-semibold text-gray-900">
                   Standard Delivery
                 </div>
-                <div className="text-sm text-gray-600">3-5 business days</div>
+                <div className="text-sm text-gray-600">4-8 business days</div>
               </div>
               <div className="text-base font-semibold text-gray-900">
                 {subtotal > 50
@@ -890,19 +959,6 @@ function ShippingStep({
             }
             className="w-4 h-4 text-pink-600 border-gray-300 focus:ring-pink-500 mt-1 flex-shrink-0"
           />
-          <div className="ml-4 flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
-              <div className="mb-2 sm:mb-0">
-                <div className="text-base font-semibold text-gray-900">
-                  Express Delivery
-                </div>
-                <div className="text-sm text-gray-600">1-2 business days</div>
-              </div>
-              <div className="text-base font-semibold text-gray-900">
-                {formatPrice(9.99, currency, exchangeRate)}
-              </div>
-            </div>
-          </div>
         </label>
       </div>
 
