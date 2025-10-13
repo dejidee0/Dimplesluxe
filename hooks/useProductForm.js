@@ -1,7 +1,10 @@
+// useProductForm.js
 import { useState, useCallback } from "react";
 
 const MAX_TOTAL_SIZE = 40 * 1024 * 1024; // 40MB
 const MAX_INDIVIDUAL_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
 
 export const useProductForm = (
   onAddProduct,
@@ -9,6 +12,7 @@ export const useProductForm = (
   onDeleteProduct,
   supabase
 ) => {
+  // Existing state
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -31,69 +35,25 @@ export const useProductForm = (
     meta_title: "",
     meta_description: "",
   });
-
   const [errors, setErrors] = useState({});
-
-  // Changed: Multi-image state instead of single image
   const [images, setImages] = useState([]);
-  // Structure: [{ id, file, preview, url, isPrimary, sortOrder, size }]
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
 
-  const generateSlug = useCallback((name) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-  }, []);
+  // New state for videos
+  const [videos, setVideos] = useState([]);
+  const [uploadingVideos, setUploadingVideos] = useState(false);
 
-  const resetForm = useCallback(() => {
-    setFormData({
-      name: "",
-      slug: "",
-      description: "",
-      short_description: "",
-      price: "",
-      original_price: "",
-      category_id: "",
-      subcategory_id: "",
-      stock: "",
-      lengths: [],
-      colors: [],
-      textures: [],
-      weight: "",
-      origin_country: "Brazil",
-      is_featured: false,
-      is_new: false,
-      is_sale: false,
-      is_active: true,
-      meta_title: "",
-      meta_description: "",
-    });
-    setErrors({});
-    setImages([]);
-  }, []);
-
+  // Existing functions: generateSlug, resetForm, formatFileSize, validateForm (modified)
   const validateForm = useCallback(() => {
     const newErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Product name is required";
-    }
-
-    if (!formData.price || parseFloat(formData.price) <= 0) {
+    // Existing validations
+    if (!formData.name.trim()) newErrors.name = "Product name is required";
+    if (!formData.price || parseFloat(formData.price) <= 0)
       newErrors.price = "Valid price is required";
-    }
-
-    if (!formData.stock || parseInt(formData.stock) < 0) {
+    if (!formData.stock || parseInt(formData.stock) < 0)
       newErrors.stock = "Valid stock quantity is required";
-    }
-
-    if (!formData.category_id) {
-      newErrors.category_id = "Category is required";
-    }
-
+    if (!formData.category_id) newErrors.category_id = "Category is required";
     if (
       formData.original_price &&
       parseFloat(formData.original_price) <= parseFloat(formData.price)
@@ -101,126 +61,111 @@ export const useProductForm = (
       newErrors.original_price =
         "Original price must be greater than current price";
     }
-
-    if (formData.name.length > 100) {
+    if (formData.name.length > 100)
       newErrors.name = "Product name must be 100 characters or less";
-    }
-
-    if (formData.slug && !/^[a-z0-9-]+$/.test(formData.slug)) {
+    if (formData.slug && !/^[a-z0-9-]+$/.test(formData.slug))
       newErrors.slug =
         "Slug can only contain lowercase letters, numbers, and hyphens";
-    }
 
-    // NEW: Validate images
-    if (images.length === 0) {
-      newErrors.images = "At least one product image is required";
-    }
-
-    const totalSize = images.reduce((sum, img) => sum + (img.size || 0), 0);
+    // Validate combined size of images and videos
+    const totalSize =
+      images.reduce((sum, img) => sum + (img.size || 0), 0) +
+      videos.reduce((sum, vid) => sum + (vid.size || 0), 0);
     if (totalSize > MAX_TOTAL_SIZE) {
-      newErrors.images = `Total image size (${formatFileSize(
+      newErrors.media = `Total media size (${formatFileSize(
         totalSize
       )}) exceeds 40MB limit`;
+    }
+    if (images.length === 0 && videos.length === 0) {
+      newErrors.media = "At least one image or video is required";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, images]);
+  }, [formData, images, videos]);
 
-  // NEW: Format file size helper
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
-  };
-
-  // NEW: Upload single image to Supabase Storage
-  const uploadImage = useCallback(
-    async (file, sortOrder) => {
+  // Modified: Upload single file (image or video)
+  const uploadFile = useCallback(
+    async (file, sortOrder, isVideo = false) => {
       if (!supabase) throw new Error("Supabase client not available");
 
       const fileExt = file.name.split(".").pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `products/${fileName}`;
+      const bucket = isVideo ? "product-videos" : "product-images";
+      const filePath = `${isVideo ? "videos" : "products"}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("product-images")
+        .from(bucket)
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const {
         data: { publicUrl },
-      } = supabase.storage.from("product-images").getPublicUrl(filePath);
+      } = supabase.storage.from(bucket).getPublicUrl(filePath);
 
       return {
         url: publicUrl,
         path: filePath,
         sortOrder,
         size: file.size,
+        isVideo,
       };
     },
     [supabase]
   );
 
-  // NEW: Upload multiple images
-  const uploadImages = useCallback(
-    async (imageFiles) => {
-      if (!supabase) throw new Error("Supabase client not available");
-
-      const uploadPromises = imageFiles.map((img, index) =>
-        uploadImage(img.file, img.sortOrder || index)
+  // Modified: Upload multiple files
+  const uploadFiles = useCallback(
+    async (files) => {
+      const uploadPromises = files.map((item, index) =>
+        uploadFile(item.file, item.sortOrder || index, item.isVideo)
       );
-
       return await Promise.all(uploadPromises);
     },
-    [supabase, uploadImage]
+    [uploadFile]
   );
 
-  // NEW: Delete single image from storage
-  const deleteImage = useCallback(
-    async (imagePath) => {
-      if (!supabase || !imagePath) return;
+  // Modified: Delete single file
+  const deleteFile = useCallback(
+    async (filePath, isVideo = false) => {
+      if (!supabase || !filePath) return;
       try {
-        // Extract path from URL or use as-is
-        const path = imagePath.includes("/")
-          ? imagePath.split("/products/").pop()
-          : imagePath;
-
+        const path = filePath.includes("/")
+          ? filePath.split("/").pop()
+          : filePath;
+        const bucket = isVideo ? "product-videos" : "product-images";
         await supabase.storage
-          .from("product-images")
-          .remove([`products/${path}`]);
+          .from(bucket)
+          .remove([`${isVideo ? "videos" : "products"}/${path}`]);
       } catch (error) {
-        console.error("Error deleting image:", error);
+        console.error(`Error deleting ${isVideo ? "video" : "image"}:`, error);
       }
     },
     [supabase]
   );
 
-  // NEW: Delete multiple images
-  const deleteImages = useCallback(
-    async (imagePaths) => {
-      if (!supabase || !imagePaths || imagePaths.length === 0) return;
-
-      const deletePromises = imagePaths.map((path) => deleteImage(path));
+  // Modified: Delete multiple files
+  const deleteFiles = useCallback(
+    async (filePaths, isVideo = false) => {
+      if (!supabase || !filePaths || filePaths.length === 0) return;
+      const deletePromises = filePaths.map((path) => deleteFile(path, isVideo));
       await Promise.all(deletePromises);
     },
-    [supabase, deleteImage]
+    [supabase, deleteFile]
   );
 
-  // NEW: Save product images to database
-  const saveProductImages = useCallback(
-    async (productId, uploadedImages, imageMetadata) => {
+  // New: Save product videos to database
+  const saveProductVideos = useCallback(
+    async (productId, uploadedVideos, videoMetadata) => {
       if (!supabase) throw new Error("Supabase client not available");
 
-      const imageRecords = uploadedImages.map((uploaded, index) => {
-        const metadata = imageMetadata[index];
+      const videoRecords = uploadedVideos.map((uploaded, index) => {
+        const metadata = videoMetadata[index];
         return {
           product_id: productId,
-          image_url: uploaded.url,
-          alt_text: `${formData.name} - Image ${index + 1}`,
+          video_url: uploaded.url,
+          alt_text: `${formData.name} - Video ${index + 1}`,
           is_primary: metadata.isPrimary || false,
           sort_order: uploaded.sortOrder,
           file_size: uploaded.size,
@@ -228,8 +173,8 @@ export const useProductForm = (
       });
 
       const { data, error } = await supabase
-        .from("product_images")
-        .insert(imageRecords)
+        .from("product_videos")
+        .insert(videoRecords)
         .select();
 
       if (error) throw error;
@@ -238,42 +183,74 @@ export const useProductForm = (
     [supabase, formData.name]
   );
 
-  // NEW: Update product images (for edit mode)
-  const updateProductImages = useCallback(
-    async (productId, newImages, existingImages = []) => {
+  // Modified: Update product images and videos
+  const updateProductMedia = useCallback(
+    async (
+      productId,
+      newImages,
+      newVideos,
+      existingImages = [],
+      existingVideos = []
+    ) => {
       if (!supabase) throw new Error("Supabase client not available");
 
       // Delete removed images
-      const existingUrls = existingImages.map(
+      const existingImageUrls = existingImages.map(
         (img) => img.url || img.image_url
       );
-      const newUrls = newImages.filter((img) => img.url).map((img) => img.url);
+      const newImageUrls = newImages
+        .filter((img) => img.url)
+        .map((img) => img.url);
       const imagesToDelete = existingImages.filter(
-        (img) => !newUrls.includes(img.url || img.image_url)
+        (img) => !newImageUrls.includes(img.url || img.image_url)
       );
-
       if (imagesToDelete.length > 0) {
-        // Delete from storage
-        await deleteImages(
-          imagesToDelete.map((img) => img.image_url || img.url)
+        await deleteFiles(
+          imagesToDelete.map((img) => img.image_url || img.url),
+          false
         );
-
-        // Delete from database
         const idsToDelete = imagesToDelete.map((img) => img.id).filter(Boolean);
         if (idsToDelete.length > 0) {
           await supabase.from("product_images").delete().in("id", idsToDelete);
         }
       }
 
-      // Upload new images (those with file property)
-      const newImagesToUpload = newImages.filter((img) => img.file);
-      let uploadedImages = [];
-
-      if (newImagesToUpload.length > 0) {
-        uploadedImages = await uploadImages(newImagesToUpload);
+      // Delete removed videos
+      const existingVideoUrls = existingVideos.map(
+        (vid) => vid.url || vid.video_url
+      );
+      const newVideoUrls = newVideos
+        .filter((vid) => vid.url)
+        .map((vid) => vid.url);
+      const videosToDelete = existingVideos.filter(
+        (vid) => !newVideoUrls.includes(vid.url || vid.video_url)
+      );
+      if (videosToDelete.length > 0) {
+        await deleteFiles(
+          videosToDelete.map((vid) => vid.video_url || vid.url),
+          true
+        );
+        const idsToDelete = videosToDelete.map((vid) => vid.id).filter(Boolean);
+        if (idsToDelete.length > 0) {
+          await supabase.from("product_videos").delete().in("id", idsToDelete);
+        }
       }
 
-      // Update existing images' metadata (primary status, sort order)
+      // Upload new images
+      const newImagesToUpload = newImages.filter((img) => img.file);
+      let uploadedImages = [];
+      if (newImagesToUpload.length > 0) {
+        uploadedImages = await uploadFiles(newImagesToUpload);
+      }
+
+      // Upload new videos
+      const newVideosToUpload = newVideos.filter((vid) => vid.file);
+      let uploadedVideos = [];
+      if (newVideosToUpload.length > 0) {
+        uploadedVideos = await uploadFiles(newVideosToUpload);
+      }
+
+      // Update existing images' metadata
       const imagesToUpdate = newImages
         .filter((img) => img.id && !img.file)
         .map((img, index) => ({
@@ -281,7 +258,6 @@ export const useProductForm = (
           is_primary: img.isPrimary || false,
           sort_order: index,
         }));
-
       if (imagesToUpdate.length > 0) {
         for (const img of imagesToUpdate) {
           await supabase
@@ -294,167 +270,187 @@ export const useProductForm = (
         }
       }
 
-      // Insert newly uploaded images
+      // Update existing videos' metadata
+      const videosToUpdate = newVideos
+        .filter((vid) => vid.id && !vid.file)
+        .map((vid, index) => ({
+          id: vid.id,
+          is_primary: vid.isPrimary || false,
+          sort_order: index,
+        }));
+      if (videosToUpdate.length > 0) {
+        for (const vid of videosToUpdate) {
+          await supabase
+            .from("product_videos")
+            .update({
+              is_primary: vid.is_primary,
+              sort_order: vid.sort_order,
+            })
+            .eq("id", vid.id);
+        }
+      }
+
+      // Insert newly uploaded media
       if (uploadedImages.length > 0) {
         await saveProductImages(productId, uploadedImages, newImagesToUpload);
+      }
+      if (uploadedVideos.length > 0) {
+        await saveProductVideos(productId, uploadedVideos, newVideosToUpload);
       }
 
       return true;
     },
-    [supabase, uploadImages, deleteImages, saveProductImages]
+    [supabase, uploadFiles, deleteFiles, saveProductImages, saveProductVideos]
   );
 
-  const handleInputChange = useCallback(
-    (e) => {
-      const { name, value, type, checked } = e.target;
-      setFormData((prev) => ({
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      }));
-
-      if (name === "name") {
-        setFormData((prev) => ({
-          ...prev,
-          slug: generateSlug(value),
-        }));
-      }
-
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    },
-    [generateSlug]
-  );
-
-  const handleArrayInputChange = useCallback((field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  }, []);
-  const parseArrayField = (value) => {
-    if (typeof value === "string") {
-      return value
-        .split(",")
-        .map((v) => v.trim())
-        .filter((v) => v);
-    }
-    return Array.isArray(value) ? value : [];
-  };
-  // NEW: Handle multiple image selection
-  const handleImagesChange = useCallback(
+  // Modified: Handle media change (images and videos)
+  const handleMediaChange = useCallback(
     (newFiles) => {
-      const totalCurrentSize = images.reduce(
-        (sum, img) => sum + (img.size || 0),
-        0
-      );
+      const totalCurrentSize =
+        images.reduce((sum, img) => sum + (img.size || 0), 0) +
+        videos.reduce((sum, vid) => sum + (vid.size || 0), 0);
       const validFiles = [];
       let currentSize = totalCurrentSize;
 
       for (const file of newFiles) {
-        // Check individual file size
         if (file.size > MAX_INDIVIDUAL_SIZE) {
           setErrors((prev) => ({
             ...prev,
-            images: `${file.name} exceeds 10MB individual file size limit`,
+            media: `${file.name} exceeds 10MB individual file size limit`,
           }));
           continue;
         }
 
-        // Check total size
         if (currentSize + file.size > MAX_TOTAL_SIZE) {
           setErrors((prev) => ({
             ...prev,
-            images: `Cannot add ${file.name}. Total size would exceed 40MB limit`,
+            media: `Cannot add ${file.name}. Total size would exceed 40MB limit`,
           }));
           break;
         }
 
-        // Check file type
-        if (!file.type.startsWith("image/")) {
+        const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type) && !isVideo) {
           setErrors((prev) => ({
             ...prev,
-            images: `${file.name} is not an image file`,
+            media: `${file.name} is not a supported image or video file`,
           }));
           continue;
         }
 
         currentSize += file.size;
-        validFiles.push(file);
+        validFiles.push({ file, isVideo });
       }
 
       if (validFiles.length > 0) {
-        const newImages = validFiles.map((file, index) => {
+        const newMedia = validFiles.map((item, index) => {
           const reader = new FileReader();
           const preview = new Promise((resolve) => {
             reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(file);
+            if (item.isVideo) {
+              resolve(null); // Videos don't need previews in the same way
+            } else {
+              reader.readAsDataURL(item.file);
+            }
           });
 
           return {
             id: crypto.randomUUID(),
-            file,
-            preview: null, // Will be set after FileReader completes
-            size: file.size,
-            isPrimary: images.length === 0 && index === 0,
-            sortOrder: images.length + index,
+            file: item.file,
+            preview: null,
+            size: item.file.size,
+            isPrimary:
+              (item.isVideo ? videos.length : images.length) === 0 &&
+              index === 0,
+            sortOrder: (item.isVideo ? videos.length : images.length) + index,
+            isVideo: item.isVideo,
           };
         });
 
-        // Set previews asynchronously
-        newImages.forEach((img, index) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setImages((prev) =>
-              prev.map((prevImg) =>
-                prevImg.id === img.id
-                  ? { ...prevImg, preview: e.target.result }
-                  : prevImg
-              )
-            );
-          };
-          reader.readAsDataURL(validFiles[index]);
+        newMedia.forEach((media, index) => {
+          if (!media.isVideo) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              setImages((prev) =>
+                prev.map((prevImg) =>
+                  prevImg.id === media.id
+                    ? { ...prevImg, preview: e.target.result }
+                    : prevImg
+                )
+              );
+            };
+            reader.readAsDataURL(validFiles[index].file);
+          }
         });
 
-        setImages((prev) => [...prev, ...newImages]);
-        setErrors((prev) => ({ ...prev, images: "" }));
+        setImages((prev) => [...prev, ...newMedia.filter((m) => !m.isVideo)]);
+        setVideos((prev) => [...prev, ...newMedia.filter((m) => m.isVideo)]);
+        setErrors((prev) => ({ ...prev, media: "" }));
       }
     },
-    [images]
+    [images, videos]
   );
 
-  // NEW: Remove image
-  const handleRemoveImage = useCallback((index) => {
-    setImages((prev) => {
-      const newImages = prev.filter((_, i) => i !== index);
-
-      // If removed image was primary, make first image primary
-      if (prev[index].isPrimary && newImages.length > 0) {
-        newImages[0].isPrimary = true;
-      }
-
-      // Update sort orders
-      return newImages.map((img, i) => ({ ...img, sortOrder: i }));
-    });
+  // New: Remove media
+  const handleRemoveMedia = useCallback((index, isVideo) => {
+    if (isVideo) {
+      setVideos((prev) => {
+        const newVideos = prev.filter((_, i) => i !== index);
+        if (prev[index].isPrimary && newVideos.length > 0) {
+          newVideos[0].isPrimary = true;
+        }
+        return newVideos.map((vid, i) => ({ ...vid, sortOrder: i }));
+      });
+    } else {
+      setImages((prev) => {
+        const newImages = prev.filter((_, i) => i !== index);
+        if (prev[index].isPrimary && newImages.length > 0) {
+          newImages[0].isPrimary = true;
+        }
+        return newImages.map((img, i) => ({ ...img, sortOrder: i }));
+      });
+    }
   }, []);
 
-  // NEW: Set primary image
-  const handleSetPrimaryImage = useCallback((index) => {
-    setImages((prev) =>
-      prev.map((img, i) => ({
-        ...img,
-        isPrimary: i === index,
-      }))
-    );
+  // New: Set primary media
+  const handleSetPrimaryMedia = useCallback((index, isVideo) => {
+    if (isVideo) {
+      setVideos((prev) =>
+        prev.map((vid, i) => ({
+          ...vid,
+          isPrimary: i === index,
+        }))
+      );
+    } else {
+      setImages((prev) =>
+        prev.map((img, i) => ({
+          ...img,
+          isPrimary: i === index,
+        }))
+      );
+    }
   }, []);
 
-  // NEW: Reorder images
-  const handleReorderImages = useCallback((fromIndex, toIndex) => {
-    setImages((prev) => {
-      const newImages = [...prev];
-      const [movedImage] = newImages.splice(fromIndex, 1);
-      newImages.splice(toIndex, 0, movedImage);
-
-      // Update sort orders
-      return newImages.map((img, i) => ({ ...img, sortOrder: i }));
-    });
+  // New: Reorder media
+  const handleReorderMedia = useCallback((fromIndex, toIndex, isVideo) => {
+    if (isVideo) {
+      setVideos((prev) => {
+        const newVideos = [...prev];
+        const [movedVideo] = newVideos.splice(fromIndex, 1);
+        newVideos.splice(toIndex, 0, movedVideo);
+        return newVideos.map((vid, i) => ({ ...vid, sortOrder: i }));
+      });
+    } else {
+      setImages((prev) => {
+        const newImages = [...prev];
+        const [movedImage] = newImages.splice(fromIndex, 1);
+        newImages.splice(toIndex, 0, movedImage);
+        return newImages.map((img, i) => ({ ...img, sortOrder: i }));
+      });
+    }
   }, []);
 
+  // Modified: Handle submit
   const handleSubmit = useCallback(
     async (e, selectedProduct, setProducts, closeModal) => {
       e.preventDefault();
@@ -484,16 +480,16 @@ export const useProductForm = (
         if (selectedProduct) {
           // UPDATE EXISTING PRODUCT
           setUploadingImages(true);
-
+          setUploadingVideos(true);
           try {
-            // Update images
-            await updateProductImages(
+            await updateProductMedia(
               selectedProduct.id,
               images,
-              selectedProduct.images || []
+              videos,
+              selectedProduct.images || [],
+              selectedProduct.videos || []
             );
 
-            // Update product data
             const { data: updatedProduct, error } = await supabase
               .from("products")
               .update(productData)
@@ -503,36 +499,44 @@ export const useProductForm = (
 
             if (error) throw error;
 
-            // Fetch updated images
             const { data: updatedImages } = await supabase
               .from("product_images")
               .select("*")
               .eq("product_id", selectedProduct.id)
               .order("sort_order");
 
-            const productWithImages = {
+            const { data: updatedVideos } = await supabase
+              .from("product_videos")
+              .select("*")
+              .eq("product_id", selectedProduct.id)
+              .order("sort_order");
+
+            const productWithMedia = {
               ...updatedProduct,
               images: updatedImages || [],
+              videos: updatedVideos || [],
             };
 
-            await onUpdateProduct?.(productWithImages);
+            await onUpdateProduct?.(productWithMedia);
             setProducts((prev) =>
               prev.map((p) =>
-                p.id === selectedProduct.id ? productWithImages : p
+                p.id === selectedProduct.id ? productWithMedia : p
               )
             );
           } catch (error) {
-            console.error("Error updating images:", error);
-            throw new Error("Failed to update product images");
+            console.error("Error updating product:", error);
+            throw new Error(
+              error.message || "Failed to update product and media"
+            );
           } finally {
             setUploadingImages(false);
+            setUploadingVideos(false);
           }
         } else {
           // CREATE NEW PRODUCT
           setUploadingImages(true);
-
+          setUploadingVideos(true);
           try {
-            // Create product first
             const { data: newProduct, error: productError } = await supabase
               .from("products")
               .insert([productData])
@@ -541,30 +545,50 @@ export const useProductForm = (
 
             if (productError) throw productError;
 
-            // Upload and save images
             const imagesToUpload = images.filter((img) => img.file);
-            const uploadedImages = await uploadImages(imagesToUpload);
-            await saveProductImages(newProduct.id, uploadedImages, images);
+            const videosToUpload = videos.filter((vid) => vid.file);
+            const uploadedImages = await uploadFiles(imagesToUpload);
+            const uploadedVideos = await uploadFiles(videosToUpload);
 
-            // Fetch saved images
+            await saveProductImages(
+              newProduct.id,
+              uploadedImages,
+              imagesToUpload
+            );
+            await saveProductVideos(
+              newProduct.id,
+              uploadedVideos,
+              videosToUpload
+            );
+
             const { data: savedImages } = await supabase
               .from("product_images")
               .select("*")
               .eq("product_id", newProduct.id)
               .order("sort_order");
 
-            const productWithImages = {
+            const { data: savedVideos } = await supabase
+              .from("product_videos")
+              .select("*")
+              .eq("product_id", newProduct.id)
+              .order("sort_order");
+
+            const productWithMedia = {
               ...newProduct,
               images: savedImages || [],
+              videos: savedVideos || [],
             };
 
-            await onAddProduct?.(productWithImages);
-            setProducts((prev) => [...prev, productWithImages]);
+            await onAddProduct?.(productWithMedia);
+            setProducts((prev) => [...prev, productWithMedia]);
           } catch (error) {
             console.error("Error creating product:", error);
-            throw new Error("Failed to create product with images");
+            throw new Error(
+              error.message || "Failed to create product with media"
+            );
           } finally {
             setUploadingImages(false);
+            setUploadingVideos(false);
           }
         }
 
@@ -583,10 +607,12 @@ export const useProductForm = (
     [
       formData,
       images,
+      videos,
       validateForm,
-      uploadImages,
+      uploadFiles,
       saveProductImages,
-      updateProductImages,
+      saveProductVideos,
+      updateProductMedia,
       onAddProduct,
       onUpdateProduct,
       resetForm,
@@ -594,17 +620,25 @@ export const useProductForm = (
     ]
   );
 
+  // Modified: Handle delete
   const handleDelete = useCallback(
     async (product, setProducts, closeModal) => {
       try {
-        // Delete all product images from storage
         if (product.images && product.images.length > 0) {
-          await deleteImages(product.images.map((img) => img.image_url));
+          await deleteFiles(
+            product.images.map((img) => img.image_url),
+            false
+          );
+        }
+        if (product.videos && product.videos.length > 0) {
+          await deleteFiles(
+            product.videos.map((vid) => vid.video_url),
+            true
+          );
         }
 
-        // Delete from database (cascade will handle product_images table)
+        await supabase.from("products").delete().eq("id", product.id);
         await onDeleteProduct?.(product.id);
-
         setProducts((prev) => prev.filter((p) => p.id !== product.id));
         closeModal();
         resetForm();
@@ -612,14 +646,15 @@ export const useProductForm = (
         console.error("Error deleting product:", error);
         setErrors((prev) => ({
           ...prev,
-          general: "Failed to delete product. Please try again.",
+          general:
+            error.message || "Failed to delete product. Please try again.",
         }));
       }
     },
-    [deleteImages, onDeleteProduct, resetForm]
+    [deleteFiles, onDeleteProduct, resetForm, supabase]
   );
 
-  // NEW: Populate form with existing product data
+  // Modified: Populate form
   const populateForm = useCallback(
     async (product) => {
       setFormData({
@@ -648,11 +683,15 @@ export const useProductForm = (
         meta_title: product.meta_title || "",
         meta_description: product.meta_description || "",
       });
-
-      // Load existing images
       if (supabase && product.id) {
         const { data: existingImages } = await supabase
           .from("product_images")
+          .select("*")
+          .eq("product_id", product.id)
+          .order("sort_order");
+
+        const { data: existingVideos } = await supabase
+          .from("product_videos")
           .select("*")
           .eq("product_id", product.id)
           .order("sort_order");
@@ -665,26 +704,71 @@ export const useProductForm = (
             isPrimary: img.is_primary,
             sortOrder: img.sort_order || index,
             size: img.file_size || 0,
+            isVideo: false,
           }));
           setImages(formattedImages);
+        }
+
+        if (existingVideos && existingVideos.length > 0) {
+          const formattedVideos = existingVideos.map((vid, index) => ({
+            id: vid.id,
+            url: vid.video_url,
+            preview: null,
+            isPrimary: vid.is_primary,
+            sortOrder: vid.sort_order || index,
+            size: vid.file_size || 0,
+            isVideo: true,
+          }));
+          setVideos(formattedVideos);
         }
       }
     },
     [supabase]
   );
 
+  // Modified: Reset form
+  const resetForm = useCallback(() => {
+    setFormData({
+      name: "",
+      slug: "",
+      description: "",
+      short_description: "",
+      price: "",
+      original_price: "",
+      category_id: "",
+      subcategory_id: "",
+      stock: "",
+      lengths: [],
+      colors: [],
+      textures: [],
+      weight: "",
+      origin_country: "Brazil",
+      is_featured: false,
+      is_new: false,
+      is_sale: false,
+      is_active: true,
+      meta_title: "",
+      meta_description: "",
+    });
+    setErrors({});
+    setImages([]);
+    setVideos([]);
+  }, []);
+
   return {
     formData,
     errors,
-    images, // Changed from imageFile and imagePreview
+    images,
+    videos,
     isSubmitting,
-    uploadingImages, // Changed from uploadingImage
+    uploadingImages,
+    uploadingVideos,
     handleInputChange,
     handleArrayInputChange,
-    handleImagesChange, // NEW
-    handleRemoveImage, // NEW
-    handleSetPrimaryImage, // NEW
-    handleReorderImages, // NEW
+    handleMediaChange,
+    handleRemoveMedia,
+    handleSetPrimaryMedia,
+    handleReorderMedia,
     handleSubmit,
     handleDelete,
     populateForm,

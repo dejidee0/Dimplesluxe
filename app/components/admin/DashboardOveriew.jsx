@@ -178,58 +178,6 @@ const DashboardOverview = ({ loading, stats, orders, products }) => {
             ))}
           </div>
         </div>
-
-        {/* Top Products */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Top Products
-            </h3>
-            <button className="text-pink-600 hover:text-pink-700 text-sm font-medium">
-              View all
-            </button>
-          </div>
-          <div className="space-y-4">
-            {products.slice(0, 4).map((product) => (
-              <div
-                key={product.id}
-                className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
-              >
-                <div className="w-12 h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg flex items-center justify-center">
-                  {product.images && product.images.length > 0 ? (
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  ) : (
-                    <Package className="w-6 h-6 text-gray-400" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 truncate">
-                    {product.name}
-                  </p>
-                  <div className="flex items-center space-x-4 mt-1">
-                    <p className="text-sm text-gray-600">
-                      Stock: {product.stock || 0}
-                    </p>
-                    <div className="flex items-center space-x-1">
-                      <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                      <span className="text-xs text-gray-600">4.8</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-pink-600">
-                    {formatPrice(product.price)}
-                  </p>
-                  <p className="text-xs text-gray-500">25 sold</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </motion.div>
   );

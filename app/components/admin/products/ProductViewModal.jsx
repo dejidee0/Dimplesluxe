@@ -1,118 +1,159 @@
-// components/products/ProductViewModal.jsx
+// ProductViewModal.jsx
 import React, { useState } from "react";
-import { Package, Star, Edit, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Package,
+  Star,
+  Edit,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+} from "lucide-react";
 import ProductModal from "./ProductModal";
 import { formatPrice, getStockStatus } from "../../../../lib/productUtils";
 
 const ProductViewModal = ({ isOpen, onClose, product, categories, onEdit }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
   if (!product) return null;
 
   const stockStatus = getStockStatus(product.stock || 0);
   const category = categories.find((cat) => cat.id === product.category_id);
 
-  // Get images array - handle both new multi-image structure and old single image
+  // Combine images and videos, prioritizing primary media
   const images =
     product.images && product.images.length > 0
-      ? product.images
+      ? product.images.map((img) => ({ ...img, isVideo: false }))
       : product.image_url
-      ? [{ id: "legacy", image_url: product.image_url, is_primary: true }]
+      ? [
+          {
+            id: "legacy",
+            image_url: product.image_url,
+            is_primary: true,
+            isVideo: false,
+          },
+        ]
       : [];
+  const videos =
+    product.videos && product.videos.length > 0
+      ? product.videos.map((vid) => ({ ...vid, isVideo: true }))
+      : [];
+  const media = [...images, ...videos].sort(
+    (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
+  );
+  const currentMedia = media[currentMediaIndex];
 
-  const currentImage = images[currentImageIndex];
-
-  const handlePrevImage = () => {
-    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  const handlePrevMedia = () => {
+    setCurrentMediaIndex((prev) => (prev === 0 ? media.length - 1 : prev - 1));
   };
 
-  const handleNextImage = () => {
-    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  const handleNextMedia = () => {
+    setCurrentMediaIndex((prev) => (prev === media.length - 1 ? 0 : prev + 1));
   };
 
   return (
     <ProductModal isOpen={isOpen} onClose={onClose} title="Product Details">
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Image Gallery */}
           <div className="space-y-4">
-            {/* Main Image Display */}
             <div className="relative w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden group">
-              {currentImage ? (
-                <img
-                  src={currentImage.image_url || currentImage.url}
-                  alt={currentImage.alt_text || product.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                    e.target.nextSibling.style.display = "flex";
-                  }}
-                />
+              {currentMedia ? (
+                currentMedia.isVideo ? (
+                  <video
+                    src={currentMedia.video_url || currentMedia.url}
+                    alt={currentMedia.alt_text || product.name}
+                    className="w-full h-full object-cover"
+                    controls
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={currentMedia.image_url || currentMedia.url}
+                    alt={currentMedia.alt_text || product.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      e.target.nextSibling.style.display = "flex";
+                    }}
+                  />
+                )
               ) : null}
               <div
                 className={`w-full h-full flex items-center justify-center ${
-                  currentImage ? "hidden" : "flex"
+                  currentMedia ? "hidden" : "flex"
                 }`}
               >
                 <Package className="w-16 h-16 text-gray-400" />
               </div>
 
-              {/* Navigation Arrows - only show if multiple images */}
-              {images.length > 1 && (
+              {media.length > 1 && (
                 <>
                   <button
-                    onClick={handlePrevImage}
+                    onClick={handlePrevMedia}
                     className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                    aria-label="Previous image"
+                    aria-label="Previous media"
                   >
                     <ChevronLeft className="w-5 h-5 text-gray-800" />
                   </button>
                   <button
-                    onClick={handleNextImage}
+                    onClick={handleNextMedia}
                     className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                    aria-label="Next image"
+                    aria-label="Next media"
                   >
                     <ChevronRight className="w-5 h-5 text-gray-800" />
                   </button>
-
-                  {/* Image Counter */}
                   <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                    {currentImageIndex + 1} / {images.length}
+                    {currentMediaIndex + 1} / {media.length}
                   </div>
                 </>
               )}
             </div>
 
-            {/* Thumbnail Gallery */}
-            {images.length > 1 && (
+            {media.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
-                {images.map((image, index) => (
+                {media.map((item, index) => (
                   <button
-                    key={image.id || index}
-                    onClick={() => setCurrentImageIndex(index)}
+                    key={item.id || index}
+                    onClick={() => setCurrentMediaIndex(index)}
                     className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                      index === currentImageIndex
+                      index === currentMediaIndex
                         ? "border-pink-500 ring-2 ring-pink-200"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
-                    <img
-                      src={image.image_url || image.url}
-                      alt={`${product.name} - ${index + 1}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                        e.target.nextSibling.style.display = "flex";
-                      }}
-                    />
-                    <div
-                      className={`w-full h-full flex items-center justify-center bg-gray-100 ${
-                        image.image_url || image.url ? "hidden" : "flex"
-                      }`}
-                    >
-                      <Package className="w-6 h-6 text-gray-400" />
-                    </div>
-                    {image.is_primary && (
+                    {item.isVideo ? (
+                      <div className="relative w-full h-full">
+                        <video
+                          src={item.video_url || item.url}
+                          className="w-full h-full object-cover"
+                          muted
+                          loop
+                          playsInline
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Play className="w-8 h-8 text-white/80" />
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <img
+                          src={item.image_url || item.url}
+                          alt={`${product.name} - ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            e.target.nextSibling.style.display = "flex";
+                          }}
+                        />
+                        <div
+                          className={`w-full h-full flex items-center justify-center bg-gray-100 ${
+                            item.image_url || item.url ? "hidden" : "flex"
+                          }`}
+                        >
+                          <Package className="w-6 h-6 text-gray-400" />
+                        </div>
+                      </>
+                    )}
+                    {item.is_primary && (
                       <div className="absolute top-1 right-1 bg-pink-500 text-white text-xs px-1 py-0.5 rounded flex items-center gap-1">
                         <Star className="w-2 h-2 fill-current" />
                       </div>
@@ -122,8 +163,8 @@ const ProductViewModal = ({ isOpen, onClose, product, categories, onEdit }) => {
               </div>
             )}
 
-            {/* Status Badges */}
             <div className="flex flex-wrap gap-2">
+              {/* Status Badges */}
               {product.is_active && (
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   Active
@@ -147,7 +188,6 @@ const ProductViewModal = ({ isOpen, onClose, product, categories, onEdit }) => {
             </div>
           </div>
 
-          {/* Product Details */}
           <div className="space-y-4">
             <div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">

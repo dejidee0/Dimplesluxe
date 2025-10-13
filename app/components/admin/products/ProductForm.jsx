@@ -1,4 +1,5 @@
-import React, { useRef, useEffect, useState } from "react";
+// ProductForm.jsx
+import React, { useRef, useEffect } from "react";
 import {
   Package,
   DollarSign,
@@ -6,277 +7,23 @@ import {
   Globe,
   Save,
   AlertCircle,
-  Camera,
-  X,
-  Upload,
-  Image as ImageIcon,
-  Star,
-  GripVertical,
-  Trash2,
 } from "lucide-react";
-
-// Multi-Image Upload Component
-const MultiImageUpload = ({
-  images,
-  onImagesChange,
-  onRemoveImage,
-  onSetPrimary,
-  onReorder,
-  uploadingImages,
-  errors,
-  maxTotalSize = 40 * 1024 * 1024, // 40MB
-}) => {
-  const [draggedIndex, setDraggedIndex] = useState(null);
-  const [dragOverIndex, setDragOverIndex] = useState(null);
-  const fileInputRef = useRef(null);
-
-  const totalSize = images.reduce((sum, img) => sum + (img.size || 0), 0);
-  const remainingSize = maxTotalSize - totalSize;
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
-  };
-
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
-    handleFiles(files);
-  };
-
-  const handleFiles = (files) => {
-    const validFiles = [];
-    let currentSize = totalSize;
-
-    for (const file of files) {
-      if (currentSize + file.size > maxTotalSize) {
-        alert(
-          `Cannot add ${
-            file.name
-          }. Total size would exceed 40MB limit.\nRemaining space: ${formatFileSize(
-            remainingSize
-          )}`
-        );
-        break;
-      }
-
-      if (!file.type.startsWith("image/")) {
-        alert(`${file.name} is not an image file`);
-        continue;
-      }
-
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`${file.name} exceeds 10MB individual file size limit`);
-        continue;
-      }
-
-      currentSize += file.size;
-      validFiles.push(file);
-    }
-
-    if (validFiles.length > 0) {
-      onImagesChange(validFiles);
-    }
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const files = Array.from(e.dataTransfer.files);
-    handleFiles(files);
-  };
-
-  const handleImageDragStart = (e, index) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleImageDragOver = (e, index) => {
-    e.preventDefault();
-    if (draggedIndex !== null && draggedIndex !== index) {
-      setDragOverIndex(index);
-    }
-  };
-
-  const handleImageDragEnd = () => {
-    if (draggedIndex !== null && dragOverIndex !== null) {
-      onReorder(draggedIndex, dragOverIndex);
-    }
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <label className="block text-sm font-medium text-gray-700">
-          Product Images
-        </label>
-        <div className="text-xs text-gray-500">
-          {formatFileSize(totalSize)} / {formatFileSize(maxTotalSize)} used
-        </div>
-      </div>
-
-      {/* Upload Area */}
-      <div
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        className="relative border-2 border-dashed border-gray-200 rounded-lg p-6 hover:border-pink-400 transition-colors cursor-pointer group"
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-        <div className="flex flex-col items-center gap-2">
-          <div className="p-3 bg-pink-50 rounded-full group-hover:bg-pink-100 transition-colors">
-            <Upload className="w-6 h-6 text-pink-600" />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-medium text-gray-700">
-              Click to upload or drag and drop
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              PNG, JPG, WebP up to 10MB per image
-            </p>
-            <p className="text-xs text-gray-500">
-              Remaining space: {formatFileSize(remainingSize)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {errors && (
-        <div className="bg-red-50 p-3 rounded-lg flex items-center gap-2 text-red-700 text-sm">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>{errors}</span>
-        </div>
-      )}
-
-      {uploadingImages && (
-        <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
-          <span>Uploading images...</span>
-        </div>
-      )}
-
-      {/* Image Grid */}
-      {images.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs text-gray-600">
-            Drag images to reorder • Click star to set as primary
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {images.map((image, index) => (
-              <div
-                key={image.id || index}
-                draggable
-                onDragStart={(e) => handleImageDragStart(e, index)}
-                onDragOver={(e) => handleImageDragOver(e, index)}
-                onDragEnd={handleImageDragEnd}
-                className={`relative group rounded-lg overflow-hidden border-2 transition-all ${
-                  dragOverIndex === index
-                    ? "border-pink-400 scale-105"
-                    : "border-gray-200"
-                } ${draggedIndex === index ? "opacity-50" : ""} ${
-                  image.isPrimary ? "ring-2 ring-pink-500" : ""
-                }`}
-              >
-                {/* Drag Handle */}
-                <div className="absolute top-2 left-2 z-10 bg-white/90 rounded p-1 cursor-move opacity-0 group-hover:opacity-100 transition-opacity">
-                  <GripVertical className="w-4 h-4 text-gray-600" />
-                </div>
-
-                {/* Primary Badge */}
-                {image.isPrimary && (
-                  <div className="absolute top-2 right-2 z-10 bg-pink-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-current" />
-                    Primary
-                  </div>
-                )}
-
-                {/* Image */}
-                <div className="aspect-square bg-gray-100">
-                  <img
-                    src={image.preview || image.url}
-                    alt={`Product ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                {/* Actions Overlay */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  {!image.isPrimary && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSetPrimary(index);
-                      }}
-                      className="p-2 bg-white rounded-full hover:bg-pink-50 transition-colors"
-                      title="Set as primary"
-                    >
-                      <Star className="w-4 h-4 text-pink-600" />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveImage(index);
-                    }}
-                    className="p-2 bg-white rounded-full hover:bg-red-50 transition-colors"
-                    title="Remove image"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </button>
-                </div>
-
-                {/* File Size */}
-                <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                  {formatFileSize(image.size || 0)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {images.length === 0 && (
-        <div className="text-center py-8 text-gray-400">
-          <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No images uploaded yet</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Main Product Form Component
+import MultiMediaUpload from "./MultiMediaUpload";
 const ProductForm = ({
   formData,
   errors,
-  images = [],
+  images,
+  videos,
   isSubmitting,
   uploadingImages,
+  uploadingVideos,
   categories,
   onInputChange,
   onArrayInputChange,
-  onImagesChange,
-  onRemoveImage,
-  onSetPrimaryImage,
-  onReorderImages,
+  onMediaChange,
+  onRemoveMedia,
+  onSetPrimaryMedia,
+  onReorderMedia,
   onSubmit,
   onCancel,
   isEditing,
@@ -302,16 +49,17 @@ const ProductForm = ({
         </div>
       )}
 
-      {/* Multi-Image Upload Section */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <MultiImageUpload
+        <MultiMediaUpload
           images={images}
-          onImagesChange={onImagesChange}
-          onRemoveImage={onRemoveImage}
-          onSetPrimary={onSetPrimaryImage}
-          onReorder={onReorderImages}
+          videos={videos}
+          onMediaChange={onMediaChange}
+          onRemoveMedia={onRemoveMedia}
+          onSetPrimaryMedia={onSetPrimaryMedia}
+          onReorderMedia={onReorderMedia}
           uploadingImages={uploadingImages}
-          errors={errors.images}
+          uploadingVideos={uploadingVideos}
+          errors={errors}
         />
       </div>
 

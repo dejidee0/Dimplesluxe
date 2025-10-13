@@ -18,6 +18,7 @@ import {
   Shield,
   RotateCcw,
   Award,
+  Play,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../../../lib/supabase";
@@ -34,17 +35,17 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { addItem, currency, exchangeRate } = useCartStore();
+  const { isWishlisted, addToWishlist, removeFromWishlist } =
+    useWishlistStore();
 
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [selectedLength, setSelectedLength] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const { isWishlisted, addToWishlist, removeFromWishlist } =
-    useWishlistStore();
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("description");
 
@@ -59,7 +60,6 @@ export default function ProductDetailPage() {
   const fetchProduct = async () => {
     try {
       setLoading(true);
-
       const { data: product, error } = await supabase
         .from("products")
         .select(
@@ -73,6 +73,14 @@ export default function ProductDetailPage() {
             is_primary,
             sort_order,
             file_size
+          ),
+          videos:product_videos(
+            id,
+            video_url,
+            alt_text,
+            is_primary,
+            sort_order,
+            file_size
           )
         `
         )
@@ -82,14 +90,19 @@ export default function ProductDetailPage() {
 
       if (error) throw error;
 
-      // Sort images by sort_order
+      // Sort media
       if (product.images) {
-        product.images.sort((a, b) => a.sort_order - b.sort_order);
+        product.images.sort(
+          (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
+        );
+      }
+      if (product.videos) {
+        product.videos.sort(
+          (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
+        );
       }
 
       setProduct(product);
-
-      // Set default selections
       if (product.lengths && product.lengths.length > 0) {
         setSelectedLength(product.lengths[0]);
       }
@@ -119,6 +132,14 @@ export default function ProductDetailPage() {
             is_primary,
             sort_order,
             file_size
+          ),
+          videos:product_videos(
+            id,
+            video_url,
+            alt_text,
+            is_primary,
+            sort_order,
+            file_size
           )
         `
         )
@@ -126,14 +147,19 @@ export default function ProductDetailPage() {
         .neq("id", params.id)
         .limit(4);
 
-      // Sort images for each product
-      const productsWithSortedImages = data?.map((product) => ({
+      const productsWithSortedMedia = data?.map((product) => ({
         ...product,
         images:
-          product.images?.sort((a, b) => a.sort_order - b.sort_order) || [],
+          product.images?.sort(
+            (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
+          ) || [],
+        videos:
+          product.videos?.sort(
+            (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
+          ) || [],
       }));
 
-      setRelatedProducts(productsWithSortedImages || []);
+      setRelatedProducts(productsWithSortedMedia || []);
     } catch (error) {
       console.error("Error fetching related products:", error);
     }
@@ -155,16 +181,19 @@ export default function ProductDetailPage() {
     }
   };
 
-  const getCurrentImage = () => {
-    if (product?.images && product.images.length > 0) {
-      return product.images[currentImageIndex]?.image_url;
+  const getCurrentMedia = () => {
+    const media = [
+      ...(product?.images?.map((img) => ({ ...img, isVideo: false })) || []),
+      ...(product?.videos?.map((vid) => ({ ...vid, isVideo: true })) || []),
+    ].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    if (media.length > 0) {
+      return media[currentMediaIndex];
     }
-    // Fallback to legacy image_url
-    if (product?.image_url) {
-      return product.image_url;
-    }
-    // Final fallback
-    return "https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800";
+    return {
+      image_url:
+        "https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800",
+      isVideo: false,
+    };
   };
 
   const handleAddToCart = () => {
@@ -223,19 +252,19 @@ export default function ProductDetailPage() {
     }
   };
 
-  const nextImage = () => {
-    if (product?.images && product.images.length > 0) {
-      setCurrentImageIndex((prev) =>
-        prev === product.images.length - 1 ? 0 : prev + 1
-      );
+  const nextMedia = () => {
+    const mediaLength =
+      (product?.images?.length || 0) + (product?.videos?.length || 0);
+    if (mediaLength > 0) {
+      setCurrentMediaIndex((prev) => (prev === mediaLength - 1 ? 0 : prev + 1));
     }
   };
 
-  const prevImage = () => {
-    if (product?.images && product.images.length > 0) {
-      setCurrentImageIndex((prev) =>
-        prev === 0 ? product.images.length - 1 : prev - 1
-      );
+  const prevMedia = () => {
+    const mediaLength =
+      (product?.images?.length || 0) + (product?.videos?.length || 0);
+    if (mediaLength > 0) {
+      setCurrentMediaIndex((prev) => (prev === 0 ? mediaLength - 1 : prev - 1));
     }
   };
 
@@ -317,36 +346,46 @@ export default function ProductDetailPage() {
             <div className="relative h-96 sm:h-[500px] lg:h-[600px] bg-gray-100 rounded-2xl overflow-hidden group">
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={currentImageIndex}
+                  key={currentMediaIndex}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
                   className="relative w-full h-full"
                 >
-                  <Image
-                    src={getCurrentImage()}
-                    alt={
-                      product.images?.[currentImageIndex]?.alt_text ||
-                      product.name
-                    }
-                    fill
-                    className="object-cover"
-                  />
+                  {getCurrentMedia().isVideo ? (
+                    <video
+                      src={getCurrentMedia().video_url || getCurrentMedia().url}
+                      alt={getCurrentMedia().alt_text || product.name}
+                      className="w-full h-full object-cover"
+                      controls
+                      playsInline
+                    />
+                  ) : (
+                    <Image
+                      src={getCurrentMedia().image_url || getCurrentMedia().url}
+                      alt={
+                        product.images?.[currentMediaIndex]?.alt_text ||
+                        product.name
+                      }
+                      fill
+                      className="object-cover"
+                    />
+                  )}
                 </motion.div>
               </AnimatePresence>
 
               {/* Navigation Arrows */}
-              {product.images && product.images.length > 1 && (
+              {product.images?.length + product.videos?.length > 1 && (
                 <>
                   <button
-                    onClick={prevImage}
+                    onClick={prevMedia}
                     className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={nextImage}
+                    onClick={nextMedia}
                     className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all"
                   >
                     <ChevronRight className="w-5 h-5" />
@@ -355,42 +394,64 @@ export default function ProductDetailPage() {
               )}
 
               {/* Image Indicators */}
-              {product.images && product.images.length > 1 && (
+              {product.images?.length + product.videos?.length > 1 && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-                  {product.images.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentImageIndex(index)}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        index === currentImageIndex ? "bg-white" : "bg-white/50"
-                      }`}
-                    />
-                  ))}
+                  {[...(product.images || []), ...(product.videos || [])]
+                    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                    .map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentMediaIndex(index)}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          index === currentMediaIndex
+                            ? "bg-white"
+                            : "bg-white/50"
+                        }`}
+                      />
+                    ))}
                 </div>
               )}
             </div>
 
             {/* Thumbnail Images */}
-            {product.images && product.images.length > 1 && (
+            {product.images?.length + product.videos?.length > 1 && (
               <div className="grid grid-cols-4 gap-2 sm:gap-4">
-                {product.images.slice(0, 4).map((image, index) => (
-                  <button
-                    key={image.id || index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`relative h-20 sm:h-24 rounded-lg overflow-hidden border-2 transition-all ${
-                      index === currentImageIndex
-                        ? "border-primary-500"
-                        : "border-gray-200"
-                    }`}
-                  >
-                    <Image
-                      src={image.image_url}
-                      alt={image.alt_text || `${product.name} ${index + 1}`}
-                      fill
-                      className="object-cover"
-                    />
-                  </button>
-                ))}
+                {[...(product.images || []), ...(product.videos || [])]
+                  .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                  .slice(0, 4)
+                  .map((item, index) => (
+                    <button
+                      key={item.id || index}
+                      onClick={() => setCurrentMediaIndex(index)}
+                      className={`relative h-20 sm:h-24 rounded-lg overflow-hidden border-2 transition-all ${
+                        index === currentMediaIndex
+                          ? "border-primary-500"
+                          : "border-gray-200"
+                      }`}
+                    >
+                      {item.isVideo ? (
+                        <div className="relative w-full h-full">
+                          <video
+                            src={item.video_url || item.url}
+                            className="w-full h-full object-cover"
+                            muted
+                            loop
+                            playsInline
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Play className="w-8 h-8 text-white/80" />
+                          </div>
+                        </div>
+                      ) : (
+                        <Image
+                          src={item.image_url || item.url}
+                          alt={item.alt_text || `${product.name} ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                      )}
+                    </button>
+                  ))}
               </div>
             )}
           </div>
