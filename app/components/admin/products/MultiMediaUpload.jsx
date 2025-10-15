@@ -7,12 +7,13 @@ import {
   Star,
   GripVertical,
   Trash2,
+  AlertCircle,
   Play,
 } from "lucide-react";
 
 const MultiMediaUpload = ({
-  images,
-  videos,
+  images = [],
+  videos = [],
   onMediaChange,
   onRemoveMedia,
   onSetPrimaryMedia,

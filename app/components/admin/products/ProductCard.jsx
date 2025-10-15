@@ -1,7 +1,15 @@
 import React from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Package, Star, Eye, Edit, Trash2, ImageIcon } from "lucide-react";
+import {
+  Package,
+  Star,
+  Eye,
+  Edit,
+  Trash2,
+  ImageIcon,
+  Play,
+} from "lucide-react";
 import { formatPrice, getStockStatus } from "../../../../lib/productUtils";
 
 const ProductCard = ({ product, categories, onView, onEdit, onDelete }) => {
@@ -12,27 +20,50 @@ const ProductCard = ({ product, categories, onView, onEdit, onDelete }) => {
   const fallbackImageUrl =
     "https://images.pexels.com/photos/3992656/pexels-photo-3992656.jpeg?auto=compress&cs=tinysrgb&w=800";
 
-  // Get primary image - supports both new multi-image and legacy single image
-  const getPrimaryImage = () => {
-    // First, try to get primary image from images array
-    if (product.images && product.images.length > 0) {
-      const primaryImage = product.images.find((img) => img.is_primary);
-      return primaryImage?.image_url || product.images[0]?.image_url;
+  // Get primary media (image or video) from product.images array
+  const getPrimaryMedia = () => {
+    // product.images contains all media from product_images table
+    const allMedia = product.images || [];
+
+    if (allMedia.length > 0) {
+      // Find primary media
+      const primaryMedia = allMedia.find((m) => m.is_primary);
+      if (primaryMedia) {
+        return {
+          url: primaryMedia.image_url,
+          isVideo: primaryMedia.is_video || false,
+        };
+      }
+      // Return first media if no primary is set
+      return {
+        url: allMedia[0].image_url,
+        isVideo: allMedia[0].is_video || false,
+      };
     }
 
-    // Fallback to legacy image_url field
+    // Fallback to legacy image_url field (if exists)
     if (product.image_url) {
-      return product.image_url;
+      return {
+        url: product.image_url,
+        isVideo: false,
+      };
     }
 
     return null;
   };
 
-  const primaryImageUrl = getPrimaryImage();
-  const imageCount = product.images?.length || 0;
+  const primaryMedia = getPrimaryMedia();
+  const totalMediaCount = product.images?.length || 0;
+  const imageCount = product.images?.filter((m) => !m.is_video).length || 0;
+  const videoCount = product.images?.filter((m) => m.is_video).length || 0;
 
-  console.log("ProductCard primary image:", primaryImageUrl);
-  console.log("ProductCard total images:", imageCount);
+  console.log("ProductCard media:", {
+    name: product.name,
+    total: totalMediaCount,
+    images: imageCount,
+    videos: videoCount,
+    primary: primaryMedia,
+  });
 
   return (
     <motion.div
@@ -42,30 +73,57 @@ const ProductCard = ({ product, categories, onView, onEdit, onDelete }) => {
       className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
     >
       <div className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100">
-        {primaryImageUrl ? (
-          <Image
-            src={primaryImageUrl}
-            alt={product.name}
-            fill
-            className="object-cover"
-            priority={product.is_featured}
-            onError={(e) => {
-              console.error(`Failed to load image: ${primaryImageUrl}`);
-              e.target.src = fallbackImageUrl;
-            }}
-          />
+        {primaryMedia ? (
+          primaryMedia.isVideo ? (
+            <div className="relative w-full h-full">
+              <video
+                src={primaryMedia.url}
+                className="w-full h-full object-cover"
+                muted
+                loop
+                playsInline
+                onError={(e) => {
+                  console.error(`Failed to load video: ${primaryMedia.url}`);
+                  e.target.style.display = "none";
+                  e.target.nextElementSibling.style.display = "flex";
+                }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="bg-black/50 rounded-full p-3">
+                  <Play className="w-8 h-8 text-white" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Image
+              src={primaryMedia.url}
+              alt={product.name}
+              fill
+              className="object-cover"
+              priority={product.is_featured}
+              onError={(e) => {
+                console.error(`Failed to load image: ${primaryMedia.url}`);
+                e.target.src = fallbackImageUrl;
+              }}
+            />
+          )
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Package className="w-12 h-12 text-gray-400" />
           </div>
         )}
 
-        {/* Image Count Badge */}
-        {imageCount > 1 && (
+        {/* Media Count Badge */}
+        {totalMediaCount > 1 && (
           <div className="absolute bottom-2 right-2">
             <div className="flex items-center space-x-1 bg-black/70 text-white rounded-full px-2 py-1 text-xs shadow-sm">
               <ImageIcon className="w-3 h-3" />
-              <span className="font-medium">{imageCount}</span>
+              <span className="font-medium">{totalMediaCount}</span>
+              {videoCount > 0 && (
+                <span className="text-pink-300">
+                  ({videoCount} video{videoCount > 1 ? "s" : ""})
+                </span>
+              )}
             </div>
           </div>
         )}

@@ -60,27 +60,22 @@ export default function ProductDetailPage() {
   const fetchProduct = async () => {
     try {
       setLoading(true);
+
+      // Fetch product with all media from product_images table
       const { data: product, error } = await supabase
         .from("products")
         .select(
           `
           *,
           category:categories!products_category_id_fkey(name, slug),
-          images:product_images(
+          media:product_images(
             id,
             image_url,
             alt_text,
             is_primary,
             sort_order,
-            file_size
-          ),
-          videos:product_videos(
-            id,
-            video_url,
-            alt_text,
-            is_primary,
-            sort_order,
-            file_size
+            file_size,
+            is_video
           )
         `
         )
@@ -90,17 +85,23 @@ export default function ProductDetailPage() {
 
       if (error) throw error;
 
-      // Sort media
-      if (product.images) {
-        product.images.sort(
-          (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
-        );
-      }
-      if (product.videos) {
-        product.videos.sort(
-          (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
-        );
-      }
+      // Separate images and videos from the media array
+      const allMedia = product.media || [];
+      product.images = allMedia
+        .filter((m) => !m.is_video)
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+      product.videos = allMedia
+        .filter((m) => m.is_video)
+        .map((v) => ({ ...v, video_url: v.image_url })) // Map image_url to video_url for consistency
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+      console.log("Product loaded:", {
+        name: product.name,
+        totalMedia: allMedia.length,
+        images: product.images.length,
+        videos: product.videos.length,
+      });
 
       setProduct(product);
       if (product.lengths && product.lengths.length > 0) {
@@ -125,21 +126,14 @@ export default function ProductDetailPage() {
           `
           *,
           category:categories!products_category_id_fkey(name, slug),
-          images:product_images(
+          media:product_images(
             id,
             image_url,
             alt_text,
             is_primary,
             sort_order,
-            file_size
-          ),
-          videos:product_videos(
-            id,
-            video_url,
-            alt_text,
-            is_primary,
-            sort_order,
-            file_size
+            file_size,
+            is_video
           )
         `
         )
@@ -147,17 +141,19 @@ export default function ProductDetailPage() {
         .neq("id", params.id)
         .limit(4);
 
-      const productsWithSortedMedia = data?.map((product) => ({
-        ...product,
-        images:
-          product.images?.sort(
-            (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
-          ) || [],
-        videos:
-          product.videos?.sort(
-            (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
-          ) || [],
-      }));
+      const productsWithSortedMedia = data?.map((product) => {
+        const allMedia = product.media || [];
+        return {
+          ...product,
+          images: allMedia
+            .filter((m) => !m.is_video)
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+          videos: allMedia
+            .filter((m) => m.is_video)
+            .map((v) => ({ ...v, video_url: v.image_url }))
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+        };
+      });
 
       setRelatedProducts(productsWithSortedMedia || []);
     } catch (error) {
@@ -186,6 +182,7 @@ export default function ProductDetailPage() {
       ...(product?.images?.map((img) => ({ ...img, isVideo: false })) || []),
       ...(product?.videos?.map((vid) => ({ ...vid, isVideo: true })) || []),
     ].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
     if (media.length > 0) {
       return media[currentMediaIndex];
     }
@@ -313,6 +310,9 @@ export default function ProductDetailPage() {
     );
   }
 
+  const totalMediaCount =
+    (product?.images?.length || 0) + (product?.videos?.length || 0);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -340,9 +340,9 @@ export default function ProductDetailPage() {
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-12 lg:mb-16">
-          {/* Product Images */}
+          {/* Product Media */}
           <div className="space-y-4">
-            {/* Main Image */}
+            {/* Main Media Display */}
             <div className="relative h-96 sm:h-[500px] lg:h-[600px] bg-gray-100 rounded-2xl overflow-hidden group">
               <AnimatePresence mode="wait">
                 <motion.div
@@ -355,7 +355,10 @@ export default function ProductDetailPage() {
                 >
                   {getCurrentMedia().isVideo ? (
                     <video
-                      src={getCurrentMedia().video_url || getCurrentMedia().url}
+                      src={
+                        getCurrentMedia().video_url ||
+                        getCurrentMedia().image_url
+                      }
                       alt={getCurrentMedia().alt_text || product.name}
                       className="w-full h-full object-cover"
                       controls
@@ -364,10 +367,7 @@ export default function ProductDetailPage() {
                   ) : (
                     <Image
                       src={getCurrentMedia().image_url || getCurrentMedia().url}
-                      alt={
-                        product.images?.[currentMediaIndex]?.alt_text ||
-                        product.name
-                      }
+                      alt={getCurrentMedia().alt_text || product.name}
                       fill
                       className="object-cover"
                     />
@@ -376,7 +376,7 @@ export default function ProductDetailPage() {
               </AnimatePresence>
 
               {/* Navigation Arrows */}
-              {product.images?.length + product.videos?.length > 1 && (
+              {totalMediaCount > 1 && (
                 <>
                   <button
                     onClick={prevMedia}
@@ -393,8 +393,8 @@ export default function ProductDetailPage() {
                 </>
               )}
 
-              {/* Image Indicators */}
-              {product.images?.length + product.videos?.length > 1 && (
+              {/* Media Indicators */}
+              {totalMediaCount > 1 && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
                   {[...(product.images || []), ...(product.videos || [])]
                     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
@@ -404,7 +404,7 @@ export default function ProductDetailPage() {
                         onClick={() => setCurrentMediaIndex(index)}
                         className={`w-2 h-2 rounded-full transition-all ${
                           index === currentMediaIndex
-                            ? "bg-white"
+                            ? "bg-white w-8"
                             : "bg-white/50"
                         }`}
                       />
@@ -413,45 +413,48 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {/* Thumbnail Images */}
-            {product.images?.length + product.videos?.length > 1 && (
+            {/* Thumbnail Grid */}
+            {totalMediaCount > 1 && (
               <div className="grid grid-cols-4 gap-2 sm:gap-4">
                 {[...(product.images || []), ...(product.videos || [])]
                   .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
                   .slice(0, 4)
-                  .map((item, index) => (
-                    <button
-                      key={item.id || index}
-                      onClick={() => setCurrentMediaIndex(index)}
-                      className={`relative h-20 sm:h-24 rounded-lg overflow-hidden border-2 transition-all ${
-                        index === currentMediaIndex
-                          ? "border-primary-500"
-                          : "border-gray-200"
-                      }`}
-                    >
-                      {item.isVideo ? (
-                        <div className="relative w-full h-full">
-                          <video
-                            src={item.video_url || item.url}
-                            className="w-full h-full object-cover"
-                            muted
-                            loop
-                            playsInline
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Play className="w-8 h-8 text-white/80" />
+                  .map((item, index) => {
+                    const isVideo = item.is_video || item.isVideo;
+                    return (
+                      <button
+                        key={item.id || index}
+                        onClick={() => setCurrentMediaIndex(index)}
+                        className={`relative h-20 sm:h-24 rounded-lg overflow-hidden border-2 transition-all ${
+                          index === currentMediaIndex
+                            ? "border-primary-500 ring-2 ring-primary-200"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        {isVideo ? (
+                          <div className="relative w-full h-full bg-gray-900">
+                            <video
+                              src={item.video_url || item.image_url}
+                              className="w-full h-full object-cover"
+                              muted
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                              <Play className="w-8 h-8 text-white" />
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <Image
-                          src={item.image_url || item.url}
-                          alt={item.alt_text || `${product.name} ${index + 1}`}
-                          fill
-                          className="object-cover"
-                        />
-                      )}
-                    </button>
-                  ))}
+                        ) : (
+                          <Image
+                            src={item.image_url || item.url}
+                            alt={
+                              item.alt_text || `${product.name} ${index + 1}`
+                            }
+                            fill
+                            className="object-cover"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -758,53 +761,6 @@ export default function ProductDetailPage() {
                     </ul>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {activeTab === "reviews" && (
-              <div>
-                {reviews.length > 0 ? (
-                  <div className="space-y-6">
-                    {reviews.map((review) => (
-                      <div
-                        key={review.id}
-                        className="border-b border-gray-200 pb-6 last:border-b-0"
-                      >
-                        <div className="flex items-center space-x-2 mb-2">
-                          <div className="flex items-center space-x-1">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${
-                                  i < review.rating
-                                    ? "text-yellow-400 fill-current"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="font-medium text-gray-900">
-                            {review.title}
-                          </span>
-                        </div>
-                        <p className="text-gray-700 mb-2">{review.comment}</p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(review.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Star className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <h4 className="font-medium text-gray-900 mb-2">
-                      No reviews yet
-                    </h4>
-                    <p className="text-gray-600">
-                      Be the first to review this product!
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </div>

@@ -127,15 +127,17 @@ export default function ProductsPage() {
         .from("products")
         .select(
           `
-          *,
-          category:categories!products_category_id_fkey(name, slug),    images:product_images(
-      id,
-      image_url,
-      alt_text,
-      is_primary,
-      sort_order,
-      file_size
-    )
+       *,
+  category:categories!products_category_id_fkey(id, name, slug),
+  images:product_images(
+    id,
+    image_url,
+    alt_text,
+    is_primary,
+    sort_order,
+    file_size,
+    is_video
+  )
         `
         )
         .eq("is_active", true);
